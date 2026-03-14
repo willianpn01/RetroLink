@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>RetroLink - Servidor Híbrido - Modo Clássico</title>
+    <!-- CSS super leve (Web 1.0/2.0), pensado para não sobrecarregar MyPal/K-Meleon no XP -->
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            background-color: #004e98;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #c0c0c0;
+            border: 2px outset #ffffff;
+            width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            box-shadow: 5px 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            background-color: #000080;
+            color: white;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px inset #ffffff;
+            text-align: center;
+        }
+
+        h1 { margin: 0; font-size: 24px; font-weight: bold; }
+        
+        .panel {
+            background-color: #e0e0e0;
+            border: 2px inset #ffffff;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            color: #000080;
+            margin-top: 0;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #808080;
+            padding-bottom: 5px;
+        }
+
+        /* Tabela Estilo Windows Explorer Clássico */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border: 1px solid #808080;
+            table-layout: fixed;
+        }
+
+        th {
+            background-color: #d4d0c8;
+            border: 1px outset #ffffff;
+            padding: 5px;
+            text-align: left;
+            font-weight: normal;
+        }
+
+        td {
+            padding: 5px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+
+        .name-cell {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .name-cell a,
+        .name-cell span {
+            display: block;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        tr:hover {
+            background-color: #316ac5;
+            color: white;
+        }
+        
+        tr:hover a { color: white; }
+
+        .icon-cell {
+            text-align: center;
+            width: 30px;
+            font-size: 18px;
+        }
+
+        .action-cell {
+            text-align: center;
+            width: 100px;
+        }
+
+        a { color: #0000ee; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .btn {
+            background-color: #d4d0c8;
+            border: 2px outset #ffffff;
+            padding: 5px 15px;
+            font-family: Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            color: black;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:active {
+            border-style: inset;
+            background-color: #c0c0c0;
+        }
+
+        /* Formulário Clássico (multipart/form-data puro) */
+        form { margin: 0; }
+        
+        input[type="file"] {
+            background-color: white;
+            border: 1px solid #808080;
+            padding: 2px;
+            width: 70%;
+        }
+
+        .empty-msg {
+            text-align: center;
+            padding: 20px;
+            color: #808080;
+            font-style: italic;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            color: white;
+        }
+
+        /* Estilos para o iframe de upload */
+        #upload_frame {
+            display: none;
+            width: 100%;
+            height: 40px;
+            border: 1px solid #808080;
+            background-color: #fff;
+            margin-top: 10px;
+        }
+
+        #upload_status {
+            display: none;
+            color: #000080;
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 5px;
+            background-color: #fffacd;
+            border: 1px solid #808080;
+            text-align: center;
+        }
+        
+        .path-breadcrumb {
+            font-size: 14px;
+            margin-bottom: 15px;
+            padding: 5px;
+            background-color: #fff;
+            border: 1px inset #fff;
+        }
+    </style>
+    <script>
+        function iniciarUpload() {
+            // Mostra a mensagem de "Enviando, aguarde..."
+            document.getElementById('upload_status').style.display = 'block';
+            // Garante que o iframe continue invisível para não quebrar o layout,
+            // mas pode ser mostrado para debug se necessário
+            return true;
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header">
+            <h1>💽 RetroLink - Central de Compartilhamento</h1>
+            <p style="margin:5px 0 0 0; font-size: 12px;">Conectado ao Windows 10 | Interface Otimizada para XP</p>
+            <div style="margin-top: 8px;">
+                <a href="/classico/notas" class="btn">📝 Bloco de Notas</a>
+            </div>
+        </div>
+
+        <!-- Painel de Upload (Enviar para o Win10) -->
+        <div class="panel">
+            <h2 class="panel-title">📤 Enviar Arquivo para o Servidor Moderno</h2>
+            <!-- O formulário aponta para o iframe oculto -->
+            <form action="/classico/upload?path={{ current_path }}" method="post" enctype="multipart/form-data" target="upload_frame" onsubmit="return iniciarUpload();">
+                <input type="file" name="file" required>
+                <button type="submit" class="btn">Enviar Arquivo</button>
+            </form>
+            <div id="upload_status">⏳ Enviando arquivo, aguarde...</div>
+            <iframe id="upload_frame" name="upload_frame" src="about:blank"></iframe>
+        </div>
+
+        <!-- Painel de Download (Arquivos Disponíveis) -->
+        <div class="panel">
+            <h2 class="panel-title">📥 Arquivos Disponíveis (Baixar para o XP)</h2>
+            
+            <div class="path-breadcrumb">
+                <strong>📍 Local Atual:</strong> compartilhado/{{ current_path }}
+            </div>
+
+            <form method="get" action="/classico" style="margin: 0 0 10px 0; padding: 8px; background-color: #f5f5f5; border: 1px solid #b0b0b0;">
+                <input type="hidden" name="path" value="{{ current_path }}">
+                <input type="hidden" name="ordenar" value="{{ ordenar }}">
+                <input type="hidden" name="ordem" value="{{ ordem }}">
+                <label for="busca" style="font-weight: bold;">Busca por nome:</label>
+                <input type="text" id="busca" name="busca" value="{{ busca }}" style="width: 260px; border: 1px solid #808080; padding: 2px;">
+                <button type="submit" class="btn">Buscar</button>
+                <a href="{{ clear_search_url }}" class="btn">Limpar</a>
+            </form>
+
+            {% if busca %}
+            <div style="margin: 0 0 10px 0; padding: 6px; background-color: #fffacd; border: 1px solid #808080;">
+                Exibindo resultados para: <strong>{{ busca }}</strong>
+            </div>
+            {% endif %}
+            
+            <table>
+                <colgroup>
+                    <col style="width: 30px;">
+                    <col>
+                    <col style="width: 120px;">
+                    <col style="width: 145px;">
+                    <col style="width: 100px;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="icon-cell">Tipo</th>
+                        <th class="name-cell"><a href="{{ sort_nome_url }}">Nome {% if sort_symbols['nome'] %}{{ sort_symbols['nome'] }}{% endif %}</a></th>
+                        <th style="width: 120px;"><a href="{{ sort_tamanho_url }}">Tamanho {% if sort_symbols['tamanho'] %}{{ sort_symbols['tamanho'] }}{% endif %}</a></th>
+                        <th style="width: 145px;"><a href="{{ sort_data_url }}">Data {% if sort_symbols['data'] %}{{ sort_symbols['data'] }}{% endif %}</a></th>
+                        <th class="action-cell">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if not files %}
+                    <tr>
+                        <td colspan="5" class="empty-msg">Nenhum arquivo ou pasta encontrado aqui.</td>
+                    </tr>
+                    {% else %}
+                        {% for f in files %}
+                        <tr>
+                            <td class="icon-cell">{{ f.icon }}</td>
+                            <td class="name-cell">
+                                {% if f.is_dir %}
+                                    <a href="{{ f.open_url }}" style="font-weight: bold;">{{ f.name }}</a>
+                                {% else %}
+                                    <a href="{{ f.details_url }}">{{ f.name }}</a>
+                                {% endif %}
+                            </td>
+                            <td>{{ f.size }}</td>
+                            <td>{{ f.modified }}</td>
+                            <td class="action-cell">
+                                {% if f.is_dir %}
+                                    <a href="{{ f.open_url }}" class="btn">Abrir 📂</a>
+                                {% else %}
+                                    <a href="{{ f.download_url }}" class="btn">⬇️ Baixar</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="window.location.reload();" class="btn">🔄 Atualizar Lista</button>
+            <a href="/" class="btn" style="margin-left: 10px;">🏠 Voltar ao Início</a>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Desenvolvido para preservação retro. FastAPI + Jinja2 + HTML Clássico.
+    </div>
+
+</body>
+</html>

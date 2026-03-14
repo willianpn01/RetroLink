@@ -1,0 +1,11 @@
+{
+  "bibliotecas": [
+    {
+      "id": "compartilhado",
+      "nome": "Compartilhado XP",
+      "caminho": "C:\\Projetos\\Interface_xp_win10\\compartilhado",
+      "classico": true,
+      "icone": "💾"
+    }
+  ]
+}

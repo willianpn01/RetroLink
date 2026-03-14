@@ -1,0 +1,5 @@
+DOCUMENTACAO_TECNICA.md
+.venv/
+__pycache__/
+*.pyc
+compartilhado/

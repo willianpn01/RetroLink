@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroLink - Modo Moderno</title>
+    
+    <!-- React & ReactDOM via CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel para compilar JSX no navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS via CDN para estilização rápida e moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons para os ícones modernos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .drag-active { border-color: #3b82f6; background-color: #eff6ff; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        {% raw %}
+        const { useState, useEffect, useRef } = React;
+
+        // Componente wrapper seguro para ícones do Lucide
+        // Isso previne que o Lucide altere o DOM diretamente (substituindo a tag <i> por um <svg>)
+        // e quebre o React DOM (causando o erro "Failed to execute 'removeChild'")
+        function Icon({ name, className = "" }) {
+            const iconRef = useRef(null);
+            
+            useEffect(() => {
+                if (iconRef.current && window.lucide) {
+                    iconRef.current.innerHTML = `<i data-lucide="${name}" class="${className}"></i>`;
+                    window.lucide.createIcons({ root: iconRef.current });
+                }
+            }, [name, className]);
+            
+            return <span ref={iconRef} style={{ display: 'contents' }}></span>;
+        }
+
+                function App() {
+            const [currentSection, setCurrentSection] = useState('arquivos');
+            const [bibliotecas, setBibliotecas] = useState([]);
+            const [bibliotecaAtivaId, setBibliotecaAtivaId] = useState(null);
+
+            const fetchBibliotecas = async (preferredId = null) => {
+                try {
+                    const res = await fetch('/api/bibliotecas');
+                    if (!res.ok) throw new Error('Falha ao carregar bibliotecas');
+                    const data = await res.json();
+                    const libs = data.bibliotecas || [];
+                    setBibliotecas(libs);
+
+                    const classica = libs.find(l => l.classico);
+                    const current = libs.find(l => l.id === bibliotecaAtivaId);
+                    const preferred = libs.find(l => l.id === preferredId);
+                    const next = preferred?.id || current?.id || classica?.id || libs[0]?.id || null;
+                    setBibliotecaAtivaId(next);
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            useEffect(() => {
+                fetchBibliotecas();
+            }, []);
+
+            const bibliotecaAtiva = bibliotecas.find(l => l.id === bibliotecaAtivaId) || null;
+
+            const renderContent = () => {
+                switch(currentSection) {
+                    case 'arquivos': return <FilesSection bibliotecaAtivaId={bibliotecaAtivaId} bibliotecaAtiva={bibliotecaAtiva} key={`arquivos-${bibliotecaAtivaId || 'none'}`} />;
+                    case 'fotos': return <PhotosSection bibliotecaAtivaId={bibliotecaAtivaId} bibliotecaAtiva={bibliotecaAtiva} key={`fotos-${bibliotecaAtivaId || 'none'}`} />;
+                    case 'musica': return <MusicSection bibliotecaAtivaId={bibliotecaAtivaId} bibliotecaAtiva={bibliotecaAtiva} key={`musica-${bibliotecaAtivaId || 'none'}`} />;
+                    case 'videos': return <VideosSection bibliotecaAtivaId={bibliotecaAtivaId} bibliotecaAtiva={bibliotecaAtiva} key={`videos-${bibliotecaAtivaId || 'none'}`} />;
+                    case 'organizar': return <OrganizePhotosSection />;
+                    case 'duplicatas': return <DuplicatesSection />;
+                    case 'converter': return <ConverterSection />;
+                    case 'backup': return <BackupSection />;
+                    case 'versoes': return <VersionsSection />;
+                    case 'configuracoes': return <SettingsSection bibliotecas={bibliotecas} bibliotecaAtivaId={bibliotecaAtivaId} refreshBibliotecas={fetchBibliotecas} />;
+                    default: return <FilesSection bibliotecaAtivaId={bibliotecaAtivaId} bibliotecaAtiva={bibliotecaAtiva} key={`arquivos-${bibliotecaAtivaId || 'none'}-default`} />;
+                }
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden bg-gray-50">
+                    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+                        <div className="p-6 border-b border-gray-200 bg-blue-600 text-white">
+                            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+                                <Icon name="hard-drive" />
+                                RetroLink
+                            </h1>
+                            <p className="text-blue-200 text-sm mt-1 font-medium">Media Server</p>
+                        </div>
+                        
+                        <nav className="flex-1 p-4 space-y-2 overflow-auto">
+                            <div className="mb-3">
+                                <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Bibliotecas</p>
+                                <div className="space-y-1">
+                                    {bibliotecas.map((lib) => (
+                                        <button
+                                            key={lib.id}
+                                            onClick={() => { setBibliotecaAtivaId(lib.id); setCurrentSection('arquivos'); }}
+                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                                bibliotecaAtivaId === lib.id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                            title={lib.caminho}
+                                        >
+                                            <span className="flex items-center gap-2 min-w-0">
+                                                <span>{lib.icone || '📁'}</span>
+                                                <span className="truncate">{lib.nome}</span>
+                                            </span>
+                                            {lib.classico && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">XP</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Seções</p>
+                            {[
+                                { id: 'arquivos', icon: 'folder', label: 'Arquivos' },
+                                { id: 'fotos', icon: 'image', label: 'Fotos' },
+                                { id: 'musica', icon: 'music', label: 'Músicas' },
+                                { id: 'videos', icon: 'film', label: 'Vídeos' },
+                                { id: 'organizar', icon: 'folder-tree', label: 'Organizar' },
+                                { id: 'duplicatas', icon: 'copy', label: 'Duplicatas' },
+                                { id: 'converter', icon: 'refresh-cw', label: 'Converter' },
+                                { id: 'backup', icon: 'database-backup', label: 'Backup' },
+                                { id: 'versoes', icon: 'history', label: 'Versões' },
+                                { id: 'configuracoes', icon: 'settings', label: 'Configurações' }
+                            ].map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => setCurrentSection(item.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${
+                                        currentSection === item.id 
+                                        ? 'bg-blue-50 text-blue-600 shadow-sm' 
+                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <Icon name={item.icon} className="w-5 h-5" />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden bg-gray-50/50">
+                        {renderContent()}
+                    </div>
+                </div>
+            );
+        }
+function Placeholder({ title }) {
+                        return (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                    <Icon name="clock" className="w-16 h-16 mb-4 text-gray-300" />
+                    <h2 className="text-2xl font-semibold mb-2">{title}</h2>
+                    <p>Esta seção estará disponível em breve na próxima fase.</p>
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: FOTOS ---
+        function PhotosSection({ bibliotecaAtivaId, bibliotecaAtiva }) {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState("");
+            const [loading, setLoading] = useState(true);
+            const [selectedPhoto, setSelectedPhoto] = useState(null);
+            const [exifData, setExifData] = useState(null);
+            const observerRef = useRef(null);
+
+            const fetchPhotos = async (path = "") => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`/api/files?path=${encodeURIComponent(path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    const data = await response.json();
+                    
+                    // Filtra apenas pastas e arquivos de imagem
+                    const imgExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+                    const filtered = data.files.filter(f => 
+                        f.is_dir || imgExts.some(ext => f.name.toLowerCase().endsWith(ext))
+                    );
+                    
+                    setFiles(filtered);
+                    setCurrentPath(data.current_path);
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => { fetchPhotos(currentPath); }, []);
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+                
+                // Configura Lazy Loading das imagens
+                observerRef.current = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.removeAttribute('data-src');
+                                observerRef.current.unobserve(img);
+                            }
+                        }
+                    });
+                }, { rootMargin: '200px' });
+
+                const imgs = document.querySelectorAll('.lazy-image');
+                imgs.forEach(img => observerRef.current.observe(img));
+
+                return () => observerRef.current && observerRef.current.disconnect();
+            }, [files]);
+
+            const openLightbox = async (photo) => {
+                setSelectedPhoto(photo);
+                setExifData(null);
+                try {
+                    const res = await fetch(`/api/exif?path=${encodeURIComponent(photo.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    if (res.ok) setExifData(await res.json());
+                } catch (e) {}
+            };
+
+            const navigateLightbox = (direction) => {
+                const photosOnly = files.filter(f => !f.is_dir);
+                const currentIndex = photosOnly.findIndex(f => f.path === selectedPhoto.path);
+                let newIndex = currentIndex + direction;
+                if (newIndex < 0) newIndex = photosOnly.length - 1;
+                if (newIndex >= photosOnly.length) newIndex = 0;
+                if (photosOnly[newIndex]) openLightbox(photosOnly[newIndex]);
+            };
+
+            return (
+                <div className="p-8 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Galeria de Fotos</h2>
+                            <div className="text-sm text-gray-500 mt-1">{currentPath ? `${bibliotecaAtiva?.nome || 'Biblioteca'}/${currentPath}` : `${bibliotecaAtiva?.nome || 'Biblioteca'}/`}</div>
+                        </div>
+                        {currentPath && (
+                            <button onClick={() => fetchPhotos(currentPath.split('/').slice(0,-1).join('/'))} className="btn-modern">
+                                <Icon name="arrow-left" className="w-4 h-4" /> Voltar
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex-1 overflow-auto">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-40"><Icon name="loader-2" className="w-8 h-8 animate-spin text-gray-400" /></div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {files.map((f, idx) => (
+                                    <div key={idx} className="aspect-square bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all group"
+                                         onClick={() => f.is_dir ? fetchPhotos(f.path) : openLightbox(f)}>
+                                        {f.is_dir ? (
+                                            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-blue-500">
+                                                <Icon name="folder" className="w-12 h-12 mb-2" />
+                                                <span className="text-sm font-medium text-gray-700 text-center px-2 truncate w-full">{f.name}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="relative w-full h-full bg-gray-100">
+                                                <img 
+                                                    data-src={`/api/thumbnail?path=${encodeURIComponent(f.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`}
+                                                    className="lazy-image w-full h-full object-cover"
+                                                    alt={f.name}
+                                                />
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-white text-xs truncate">{f.name}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Lightbox */}
+                    {selectedPhoto && (
+                        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+                            <button className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full" onClick={() => setSelectedPhoto(null)}>
+                                <Icon name="x" className="w-6 h-6" />
+                            </button>
+                            
+                            <button className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full" onClick={() => navigateLightbox(-1)}>
+                                <Icon name="chevron-left" className="w-8 h-8" />
+                            </button>
+                            
+                            <img src={`/classico/download/${encodeURIComponent(selectedPhoto.path)}?biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`} className="max-h-[90vh] max-w-[80vw] object-contain" />
+                            
+                            <button className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full" onClick={() => navigateLightbox(1)}>
+                                <Icon name="chevron-right" className="w-8 h-8" />
+                            </button>
+
+                            {/* EXIF Panel */}
+                            <div className="absolute bottom-4 left-4 right-4 md:left-auto md:w-80 bg-black/60 backdrop-blur-md text-white p-4 rounded-xl text-sm">
+                                <p className="font-semibold mb-2 truncate">{selectedPhoto.name}</p>
+                                {exifData ? (
+                                    <div className="space-y-1 text-gray-300">
+                                        {exifData.date && <p><span className="text-gray-400">Data:</span> {exifData.date}</p>}
+                                        {exifData.make && <p><span className="text-gray-400">Câmera:</span> {exifData.make} {exifData.model}</p>}
+                                        {exifData.resolution && <p><span className="text-gray-400">Resolução:</span> {exifData.resolution}</p>}
+                                        {Object.keys(exifData).length === 0 && <p className="italic text-gray-500">Sem metadados EXIF</p>}
+                                    </div>
+                                ) : <p className="animate-pulse text-gray-400">Carregando metadados...</p>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: MÚSICA ---
+        function MusicSection({ bibliotecaAtivaId, bibliotecaAtiva }) {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState("");
+            const [loading, setLoading] = useState(true);
+            const [currentTrack, setCurrentTrack] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [progress, setProgress] = useState(0);
+            const [duration, setDuration] = useState(0);
+            const [volume, setVolume] = useState(1);
+            
+            // Playlist no LocalStorage
+            const [playlist, setPlaylist] = useState(() => {
+                const saved = localStorage.getItem('retrolink_playlist');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [viewMode, setViewMode] = useState('folder'); // 'folder' | 'playlist'
+            
+            const audioRef = useRef(null);
+            const nextRef = useRef(null);
+            const isSeekingRef = useRef(false);
+
+            useEffect(() => {
+                localStorage.setItem('retrolink_playlist', JSON.stringify(playlist));
+            }, [playlist]);
+
+            useEffect(() => {
+                if (!audioRef.current) {
+                    audioRef.current = new Audio();
+                    audioRef.current.addEventListener('timeupdate', () => {
+                        if (!isSeekingRef.current) {
+                            setProgress(audioRef.current.currentTime);
+                        }
+                    });
+                    audioRef.current.addEventListener('loadedmetadata', () => setDuration(audioRef.current.duration));
+                    // Executa a ref para evitar stale closure
+                    audioRef.current.addEventListener('ended', () => nextRef.current && nextRef.current());
+                }
+                
+                // Cleanup: pausa a música ao sair da aba de Músicas
+                return () => {
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.src = "";
+                    }
+                };
+            }, []);
+
+            const fetchMusic = async (path = "") => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`/api/files?path=${encodeURIComponent(path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    const data = await response.json();
+                    const audioExts = ['.mp3', '.flac', '.ogg', '.wav', '.m4a'];
+                    const filtered = data.files.filter(f => 
+                        f.is_dir || audioExts.some(ext => f.name.toLowerCase().endsWith(ext))
+                    );
+                    setFiles(filtered);
+                    setCurrentPath(data.current_path);
+                } catch (err) {} finally { setLoading(false); }
+            };
+
+            useEffect(() => { fetchMusic(currentPath); }, []);
+            
+            const playTrack = (track) => {
+                if (currentTrack?.path === track.path) {
+                    if (isPlaying) audioRef.current.pause();
+                    else audioRef.current.play();
+                    setIsPlaying(!isPlaying);
+                    return;
+                }
+                
+                // Se tocou da pasta, adiciona na playlist automaticamente (se não existir)
+                if (viewMode === 'folder') {
+                    setPlaylist(prev => {
+                        if (!prev.some(t => t.path === track.path)) return [...prev, track];
+                        return prev;
+                    });
+                }
+
+                setCurrentTrack(track);
+                audioRef.current.src = `/api/audio-stream?path=${encodeURIComponent(track.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`;
+                audioRef.current.play();
+                setIsPlaying(true);
+            };
+
+            const togglePlaylist = (e, track) => {
+                e.stopPropagation();
+                setPlaylist(prev => {
+                    if (prev.some(t => t.path === track.path)) return prev.filter(t => t.path !== track.path);
+                    return [...prev, track];
+                });
+            };
+
+            const getQueue = () => viewMode === 'playlist' ? playlist : files.filter(f => !f.is_dir);
+
+            const handleNext = () => {
+                const q = getQueue();
+                if (!q.length || !currentTrack) return;
+                const idx = q.findIndex(f => f.path === currentTrack.path);
+                if (idx !== -1 && idx + 1 < q.length) playTrack(q[idx + 1]);
+            };
+
+            const handlePrev = () => {
+                const q = getQueue();
+                if (!q.length || !currentTrack) return;
+                const idx = q.findIndex(f => f.path === currentTrack.path);
+                if (idx > 0) playTrack(q[idx - 1]);
+            };
+
+            // Mantém a ref do handleNext sempre atualizada com as states mais recentes
+            useEffect(() => { nextRef.current = handleNext; });
+
+            const formatTime = (secs) => {
+                if (isNaN(secs)) return "0:00";
+                const m = Math.floor(secs / 60);
+                const s = Math.floor(secs % 60);
+                return `${m}:${s.toString().padStart(2, '0')}`;
+            };
+
+            const handleSeekInput = (e) => {
+                if (!audioRef.current || !duration) return;
+                const newTime = parseFloat(e.target.value);
+                audioRef.current.currentTime = newTime;
+                setProgress(newTime);
+            };
+
+            const handleSeekStart = () => {
+                isSeekingRef.current = true;
+            };
+
+            const handleSeekEnd = (e) => {
+                handleSeekInput(e);
+                isSeekingRef.current = false;
+            };
+
+            const handleVolume = (e) => {
+                const vol = parseFloat(e.target.value);
+                setVolume(vol);
+                audioRef.current.volume = vol;
+            };
+
+            const renderList = () => {
+                const list = viewMode === 'playlist' ? playlist : files;
+                if (list.length === 0) return <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">{viewMode === 'playlist' ? 'Sua playlist está vazia.' : 'Pasta vazia'}</td></tr>;
+                
+                return list.map((f, idx) => (
+                    <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${currentTrack?.path === f.path ? 'bg-blue-50' : ''}`}
+                        onClick={() => f.is_dir ? fetchMusic(f.path) : playTrack(f)}>
+                        <td className="px-6 py-4 w-12 text-gray-400">
+                            {f.is_dir ? <Icon name="folder" className="w-5 h-5 text-blue-500" /> : 
+                             currentTrack?.path === f.path && isPlaying ? <Icon name="bar-chart-2" className="w-5 h-5 text-blue-600" /> : 
+                             <Icon name="music" className="w-5 h-5" />}
+                        </td>
+                        <td className={`px-6 py-4 font-medium ${currentTrack?.path === f.path ? 'text-blue-600' : 'text-gray-700'}`}>
+                            {f.name}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm text-gray-500 w-32">{f.size || 'N/A'}</td>
+                        <td className="px-6 py-4 text-right w-16">
+                            {!f.is_dir && (
+                                <button onClick={(e) => togglePlaylist(e, f)} className={`p-2 rounded-full hover:bg-gray-200 transition-colors ${playlist.some(t => t.path === f.path) ? 'text-blue-600' : 'text-gray-400'}`} title="Adicionar/Remover da Playlist">
+                                    <Icon name="list-music" className="w-5 h-5" />
+                                </button>
+                            )}
+                        </td>
+                    </tr>
+                ));
+            };
+
+            return (
+                <div className="p-8 h-full flex flex-col relative pb-32">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Biblioteca Musical</h2>
+                            <div className="flex items-center gap-4 mt-2">
+                                <div className="bg-gray-200 p-1 rounded-lg inline-flex">
+                                    <button onClick={() => setViewMode('folder')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'folder' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Navegar Pastas</button>
+                                    <button onClick={() => setViewMode('playlist')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'playlist' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Minha Playlist ({playlist.length})</button>
+                                </div>
+                                {viewMode === 'folder' && <span className="text-sm text-gray-500">{currentPath ? `${bibliotecaAtiva?.nome || 'Biblioteca'}/${currentPath}` : `${bibliotecaAtiva?.nome || 'Biblioteca'}/`}</span>}
+                            </div>
+                        </div>
+                        {viewMode === 'folder' && currentPath && (
+                            <button onClick={() => fetchMusic(currentPath.split('/').slice(0,-1).join('/'))} className="btn-modern">
+                                <Icon name="arrow-left" className="w-4 h-4" /> Voltar
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-auto">
+                        <table className="w-full text-left">
+                            <tbody>
+                                {renderList()}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Fixed Player */}
+                    <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 px-8 flex items-center gap-6 z-10">
+                        <div className="w-1/3 flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                <Icon name="music-4" className="w-6 h-6" />
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="font-semibold text-gray-800 truncate">{currentTrack?.name || "Nenhuma faixa selecionada"}</p>
+                                <p className="text-xs text-gray-500 truncate">RetroLink Player</p>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center">
+                            <div className="flex items-center gap-6 mb-2">
+                                <button className="text-gray-400 hover:text-gray-700 transition-colors" onClick={handlePrev}><Icon name="skip-back" className="w-5 h-5" /></button>
+                                <button className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md transition-colors"
+                                        onClick={() => currentTrack && playTrack(currentTrack)}>
+                                    <Icon name={isPlaying ? "pause" : "play"} className="w-5 h-5 ml-0.5" />
+                                </button>
+                                <button className="text-gray-400 hover:text-gray-700 transition-colors" onClick={handleNext}><Icon name="skip-forward" className="w-5 h-5" /></button>
+                            </div>
+                            <div className="w-full flex items-center gap-3 text-xs text-gray-500 font-medium">
+                                <span>{formatTime(progress)}</span>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max={duration || 0}
+                                    step="0.1"
+                                    value={duration ? Math.min(progress, duration) : 0}
+                                    onInput={handleSeekInput}
+                                    onChange={handleSeekInput}
+                                    onPointerDown={handleSeekStart}
+                                    onPointerUp={handleSeekEnd}
+                                    onMouseDown={handleSeekStart}
+                                    onMouseUp={handleSeekEnd}
+                                    onTouchStart={handleSeekStart}
+                                    onTouchEnd={handleSeekEnd}
+                                    className="flex-1 h-2 accent-blue-600"
+                                />
+                                <span>{formatTime(duration)}</span>
+                            </div>
+                        </div>
+
+                        <div className="w-1/3 flex justify-end items-center gap-3">
+                            <Icon name={volume === 0 ? "volume-x" : volume < 0.5 ? "volume-1" : "volume-2"} className="w-5 h-5 text-gray-500" />
+                            <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolume} className="w-24 accent-blue-600" />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: VÍDEOS ---
+        function VideosSection({ bibliotecaAtivaId, bibliotecaAtiva }) {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState("");
+            const [loading, setLoading] = useState(true);
+            const [selectedVideo, setSelectedVideo] = useState(null);
+            const [videoInfo, setVideoInfo] = useState(null);
+
+            const fetchVideos = async (path = "") => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`/api/files?path=${encodeURIComponent(path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    const data = await response.json();
+                    const videoExts = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'];
+                    const filtered = data.files.filter(f => 
+                        f.is_dir || videoExts.some(ext => f.name.toLowerCase().endsWith(ext))
+                    );
+                    setFiles(filtered);
+                    setCurrentPath(data.current_path);
+                } catch (err) {} finally { setLoading(false); }
+            };
+
+            useEffect(() => { fetchVideos(currentPath); }, []);
+            
+            const openVideo = async (video) => {
+                setSelectedVideo(video);
+                setVideoInfo(null);
+                try {
+                    const res = await fetch(`/api/video-info?path=${encodeURIComponent(video.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    if (res.ok) setVideoInfo(await res.json());
+                } catch(e) {}
+            };
+
+            const isTranscodingNeeded = selectedVideo && !['.mp4', '.webm'].some(ext => selectedVideo.name.toLowerCase().endsWith(ext));
+
+            return (
+                <div className="p-8 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Videoteca</h2>
+                            <div className="text-sm text-gray-500 mt-1">{currentPath ? `${bibliotecaAtiva?.nome || 'Biblioteca'}/${currentPath}` : `${bibliotecaAtiva?.nome || 'Biblioteca'}/`}</div>
+                        </div>
+                        {currentPath && (
+                            <button onClick={() => fetchVideos(currentPath.split('/').slice(0,-1).join('/'))} className="btn-modern">
+                                <Icon name="arrow-left" className="w-4 h-4" /> Voltar
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex-1 overflow-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {files.map((f, idx) => (
+                                <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-lg transition-all group"
+                                     onClick={() => f.is_dir ? fetchVideos(f.path) : openVideo(f)}>
+                                    {f.is_dir ? (
+                                        <div className="aspect-video flex flex-col items-center justify-center bg-gray-50 text-blue-500 hover:bg-blue-50 transition-colors">
+                                            <Icon name="folder" className="w-16 h-16 mb-3" />
+                                            <span className="font-medium text-gray-700 px-4 truncate w-full text-center">{f.name}</span>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="aspect-video relative bg-black overflow-hidden">
+                                                <img 
+                                                    src={`/api/thumbnail?path=${encodeURIComponent(f.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`}
+                                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                                                    alt={f.name}
+                                                    onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                                                />
+                                                <div className="absolute inset-0 hidden items-center justify-center">
+                                                    <Icon name="film" className="w-12 h-12 text-gray-600" />
+                                                </div>
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/30 transition-colors">
+                                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-xl">
+                                                        <Icon name="play" className="w-6 h-6 ml-1" />
+                                                    </div>
+                                                </div>
+                                                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded font-medium">
+                                                    {f.name.split('.').pop().toUpperCase()}
+                                                </div>
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="font-semibold text-gray-800 truncate mb-1" title={f.name}>{f.name}</p>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <Icon name="hard-drive" className="w-3 h-3" /> {f.size}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Video Player Modal */}
+                    {selectedVideo && (
+                        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+                            <div className="absolute top-0 inset-x-0 z-10 flex justify-between items-center p-6 bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
+                                <div className="text-white pointer-events-auto">
+                                    <h3 className="text-xl font-semibold shadow-black drop-shadow-md">{selectedVideo.name}</h3>
+                                    {isTranscodingNeeded && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/20 px-2 py-1 rounded mt-2 backdrop-blur-sm border border-amber-400/30">
+                                            <Icon name="zap" className="w-3 h-3" /> Transcodificando formato legado (FFmpeg)...
+                                        </span>
+                                    )}
+                                </div>
+                                <button className="text-white p-3 hover:bg-white/20 rounded-full transition-colors pointer-events-auto backdrop-blur-sm bg-black/20" onClick={() => setSelectedVideo(null)}>
+                                    <Icon name="x" className="w-6 h-6" />
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 flex items-center justify-center w-full h-full bg-black relative group cursor-pointer"
+                                 onClick={(e) => {
+                                     const vid = document.getElementById('main-video-player');
+                                     if(vid) { vid.paused ? vid.play() : vid.pause(); }
+                                 }}>
+                                <video 
+                                    id="main-video-player"
+                                    controls 
+                                    autoPlay 
+                                    controlsList="nodownload"
+                                    className="w-full h-full max-h-screen object-contain outline-none"
+                                    src={`/api/stream?path=${encodeURIComponent(selectedVideo.path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                ></video>
+                            </div>
+
+                            <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex justify-center pointer-events-none">
+                                {videoInfo ? (
+                                    <div className="flex gap-12 text-sm text-gray-300 backdrop-blur-md bg-black/40 px-8 py-3 rounded-2xl border border-white/10 pointer-events-auto">
+                                        <div className="flex flex-col items-center"><span className="text-gray-500 text-[10px] font-bold tracking-widest mb-1">DURAÇÃO</span><span className="font-medium text-white">{videoInfo.duration}</span></div>
+                                        <div className="flex flex-col items-center"><span className="text-gray-500 text-[10px] font-bold tracking-widest mb-1">RESOLUÇÃO</span><span className="font-medium text-white">{videoInfo.resolution}</span></div>
+                                        <div className="flex flex-col items-center"><span className="text-gray-500 text-[10px] font-bold tracking-widest mb-1">CODEC ORIGINAL</span><span className="font-medium text-white">{videoInfo.codec}</span></div>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 text-sm animate-pulse flex items-center gap-2">
+                                        <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Carregando metadados...
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: ORGANIZAR FOTOS ---
+        function OrganizePhotosSection() {
+            const [preview, setPreview] = useState(null);
+            const [loadingPreview, setLoadingPreview] = useState(false);
+            const [executing, setExecuting] = useState(false);
+            const [status, setStatus] = useState({ status: 'idle', total: 0, processados: 0, progress: 0, mensagem: '' });
+            const [showConfirm, setShowConfirm] = useState(false);
+
+            const fetchStatus = async () => {
+                try {
+                    const res = await fetch('/api/organizar-fotos/status');
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    setStatus(data);
+                    if (data.status === 'concluido' || data.status === 'erro') {
+                        setExecuting(false);
+                    }
+                } catch (e) {}
+            };
+
+            useEffect(() => {
+                fetchStatus();
+            }, []);
+
+            useEffect(() => {
+                if (!executing && status.status !== 'em_andamento' && status.status !== 'planejando') return;
+                const id = setInterval(fetchStatus, 1000);
+                return () => clearInterval(id);
+            }, [executing, status.status]);
+
+            const handlePreview = async () => {
+                setLoadingPreview(true);
+                try {
+                    const res = await fetch('/api/organizar-fotos/preview', { method: 'POST' });
+                    if (!res.ok) throw new Error('Falha ao gerar preview');
+                    setPreview(await res.json());
+                } catch (e) {
+                    alert(e.message || 'Erro ao gerar preview');
+                } finally {
+                    setLoadingPreview(false);
+                }
+            };
+
+            const execute = async () => {
+                setShowConfirm(false);
+                try {
+                    const res = await fetch('/api/organizar-fotos', { method: 'POST' });
+                    if (!res.ok) throw new Error('Falha ao iniciar organização');
+                    setExecuting(true);
+                    fetchStatus();
+                } catch (e) {
+                    alert(e.message || 'Erro ao iniciar');
+                }
+            };
+
+            return (
+                <div className="p-8 h-full flex flex-col gap-6 overflow-auto">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Organizador de Fotos</h2>
+                        <p className="text-sm text-gray-500 mt-1">Reorganiza fotos em Fotos Organizadas/Ano/Mês</p>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button onClick={handlePreview} disabled={loadingPreview || executing} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                            {loadingPreview ? 'Gerando Preview...' : 'Ver Preview'}
+                        </button>
+                        {preview && (
+                            <button onClick={() => setShowConfirm(true)} disabled={executing || !preview.summary?.to_move} className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                                Executar Organização
+                            </button>
+                        )}
+                    </div>
+
+                    {preview && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-sm text-gray-500">Fotos encontradas</p><p className="text-2xl font-bold text-gray-800">{preview.summary?.found || 0}</p></div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-sm text-gray-500">Já organizadas</p><p className="text-2xl font-bold text-gray-800">{preview.summary?.already_organized || 0}</p></div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-sm text-gray-500">Serão movidas</p><p className="text-2xl font-bold text-gray-800">{preview.summary?.to_move || 0}</p></div>
+                        </div>
+                    )}
+
+                    {(executing || status.status === 'em_andamento' || status.status === 'planejando' || status.status === 'concluido' || status.status === 'erro') && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-4">
+                            <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                <span>Status: {status.status}</span>
+                                <span>{status.progress || 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 h-2 rounded-full">
+                                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${status.progress || 0}%` }}></div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">{status.mensagem || 'Processando...'}</p>
+                        </div>
+                    )}
+
+                    {preview && (
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                                    <tr>
+                                        <th className="text-left px-4 py-3">Origem</th>
+                                        <th className="text-left px-4 py-3">Destino</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(preview.moves || []).slice(0, 500).map((item, idx) => (
+                                        <tr key={idx} className="border-b border-gray-100">
+                                            <td className="px-4 py-2 font-mono text-xs text-gray-700">{item.source}</td>
+                                            <td className="px-4 py-2 font-mono text-xs text-gray-700">{item.destination}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {(preview.moves || []).length > 500 && <div className="p-3 text-xs text-gray-500">Mostrando 500 itens de {(preview.moves || []).length}</div>}
+                        </div>
+                    )}
+
+                    {showConfirm && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Confirmar organização</h3>
+                                <p className="text-sm text-gray-600 mb-4">Esta ação moverá {preview?.summary?.to_move || 0} fotos para a estrutura Ano/Mês.</p>
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => setShowConfirm(false)} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                                    <button onClick={execute} className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Confirmar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: DUPLICATAS ---
+        function DuplicatesSection() {
+            const [loading, setLoading] = useState(false);
+            const [report, setReport] = useState({ identicos: [], similares: [] });
+            const [selected, setSelected] = useState({});
+            const [showConfirm, setShowConfirm] = useState(false);
+
+            const scan = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch('/api/duplicatas');
+                    if (!res.ok) throw new Error('Falha no scan');
+                    setReport(await res.json());
+                    setSelected({});
+                } catch (e) {
+                    alert(e.message || 'Erro ao escanear duplicatas');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const toggleFile = (path) => {
+                setSelected(prev => ({ ...prev, [path]: !prev[path] }));
+            };
+
+            const selectedPaths = Object.keys(selected).filter(k => selected[k]);
+            const fileSizeMap = {};
+            [...report.identicos, ...report.similares].forEach(group => {
+                group.files.forEach(f => { fileSizeMap[f.path] = f.size; });
+            });
+            const selectedBytes = selectedPaths.reduce((acc, p) => acc + (fileSizeMap[p] || 0), 0);
+
+            const isImageFile = (path) => /\.(jpg|jpeg|png|gif|bmp|webp|heic|heif|tif|tiff)$/i.test(path || '');
+
+            const formatBytes = (bytes) => {
+                if (!bytes) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let value = bytes;
+                let idx = 0;
+                while (value >= 1024 && idx < units.length - 1) {
+                    value /= 1024;
+                    idx += 1;
+                }
+                return `${value.toFixed(1)} ${units[idx]}`;
+            };
+
+            const removeSelected = async () => {
+                setShowConfirm(false);
+                try {
+                    const res = await fetch('/api/duplicatas', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paths: selectedPaths }),
+                    });
+                    if (!res.ok) throw new Error('Falha ao deletar');
+                    await scan();
+                } catch (e) {
+                    alert(e.message || 'Erro ao deletar');
+                }
+            };
+
+            const renderGroup = (group, idx, similar = false) => (
+                <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+                    <p className="text-xs text-gray-500 mb-3">Grupo {idx + 1} • {formatBytes(group.total_size)}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {group.files.map((f) => (
+                            <label key={f.path} className="border border-gray-200 rounded-lg p-3 flex gap-3 items-start cursor-pointer hover:bg-gray-50">
+                                <input type="checkbox" checked={!!selected[f.path]} onChange={() => toggleFile(f.path)} className="mt-1" />
+                                <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                    {isImageFile(f.path) ? (
+                                        <img src={`/api/thumbnail?path=${encodeURIComponent(f.path)}`} className="w-full h-full object-cover" alt={f.name} />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                            <Icon name="file" className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate" title={f.name}>{f.name}</p>
+                                    <p className="text-xs text-gray-500">{formatBytes(f.size)}</p>
+                                    <p className="text-[10px] font-mono text-gray-400 truncate" title={f.path}>{f.path}</p>
+                                    {similar && <p className="text-[10px] text-amber-600 mt-1">Similar (pHash ≤ 10)</p>}
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="p-8 h-full overflow-auto flex flex-col gap-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Detector de Duplicatas</h2>
+                            <p className="text-sm text-gray-500 mt-1">Idênticos por MD5 e similares por pHash</p>
+                        </div>
+                        <button onClick={scan} disabled={loading} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                            {loading ? 'Escaneando...' : 'Escanear'}
+                        </button>
+                    </div>
+
+                    {loading && <div className="h-2 bg-blue-100 rounded-full overflow-hidden"><div className="h-2 bg-blue-600 animate-pulse w-full"></div></div>}
+
+                    {selectedPaths.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex justify-between items-center">
+                            <p className="text-sm text-amber-800">{selectedPaths.length} arquivos selecionados • {formatBytes(selectedBytes)} a liberar</p>
+                            <button onClick={() => setShowConfirm(true)} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Deletar Selecionados</button>
+                        </div>
+                    )}
+
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Idênticos ({report.identicos.length})</h3>
+                        {report.identicos.length === 0 ? <p className="text-sm text-gray-500">Nenhum grupo idêntico.</p> : report.identicos.map((group, idx) => renderGroup(group, idx, false))}
+                    </div>
+
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Similares ({report.similares.length})</h3>
+                        {report.similares.length === 0 ? <p className="text-sm text-gray-500">Nenhum grupo similar.</p> : report.similares.map((group, idx) => renderGroup(group, idx, true))}
+                    </div>
+
+                    {showConfirm && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Confirmar exclusão</h3>
+                                <p className="text-sm text-gray-600 mb-4">Deletar {selectedPaths.length} arquivos e liberar aproximadamente {formatBytes(selectedBytes)}?</p>
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => setShowConfirm(false)} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                                    <button onClick={removeSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Confirmar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: CONVERTER ---
+        function ConverterSection() {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [selectedFile, setSelectedFile] = useState(null);
+            const [targetFormat, setTargetFormat] = useState('mp4');
+            const [quality, setQuality] = useState('media');
+            const [jobs, setJobs] = useState([]);
+
+            const fetchFiles = async (path = '') => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+                    if (!res.ok) throw new Error('Falha ao carregar arquivos');
+                    const data = await res.json();
+                    setFiles(data.files);
+                    setCurrentPath(data.current_path);
+                } catch (e) {
+                    alert(e.message || 'Erro ao carregar arquivos');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchFiles('');
+            }, []);
+
+            useEffect(() => {
+                const active = jobs.filter(j => j.status === 'em_andamento').map(j => j.job_id);
+                if (!active.length) return;
+
+                const id = setInterval(async () => {
+                    for (const jobId of active) {
+                        try {
+                            const res = await fetch(`/api/converter/status/${jobId}`);
+                            if (!res.ok) continue;
+                            const updated = await res.json();
+                            setJobs(prev => prev.map(j => j.job_id === jobId ? { ...j, ...updated } : j));
+                        } catch (e) {}
+                    }
+                }, 1500);
+
+                return () => clearInterval(id);
+            }, [jobs]);
+
+            const queueConversion = async () => {
+                if (!selectedFile) return;
+                try {
+                    const res = await fetch('/api/converter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path: selectedFile.path,
+                            formato_destino: targetFormat,
+                            qualidade: quality,
+                        }),
+                    });
+                    if (!res.ok) throw new Error('Falha ao iniciar conversão');
+                    const data = await res.json();
+                    setJobs(prev => [{
+                        job_id: data.job_id,
+                        status: 'em_andamento',
+                        progress: 0,
+                        input_path: selectedFile.path,
+                        formato_destino: targetFormat,
+                        qualidade: quality,
+                        output_path: null,
+                    }, ...prev]);
+                } catch (e) {
+                    alert(e.message || 'Erro ao enfileirar conversão');
+                }
+            };
+
+            const cancelJob = async (jobId) => {
+                try {
+                    await fetch(`/api/converter/cancel/${jobId}`, { method: 'POST' });
+                    setJobs(prev => prev.map(j => j.job_id === jobId ? { ...j, status: 'cancelado' } : j));
+                } catch (e) {}
+            };
+
+            return (
+                <div className="p-8 h-full overflow-auto flex flex-col gap-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Conversor de Mídia</h2>
+                        <p className="text-sm text-gray-500 mt-1">Converte vídeos/áudios e gera formatos compatíveis com XP</p>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                            <label className="text-xs font-medium text-gray-600">Formato de destino</label>
+                            <select value={targetFormat} onChange={(e) => setTargetFormat(e.target.value)} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                <optgroup label="Vídeo Moderno">
+                                    <option value="mp4">MP4</option>
+                                    <option value="mkv">MKV</option>
+                                    <option value="webm">WEBM</option>
+                                </optgroup>
+                                <optgroup label="Áudio">
+                                    <option value="mp3">MP3</option>
+                                    <option value="flac">FLAC</option>
+                                    <option value="ogg">OGG</option>
+                                </optgroup>
+                                <optgroup label="Imagem">
+                                    <option value="jpg">JPG</option>
+                                    <option value="png">PNG</option>
+                                    <option value="webp">WEBP</option>
+                                    <option value="bmp">BMP</option>
+                                    <option value="tiff">TIFF</option>
+                                    <option value="gif">GIF</option>
+                                </optgroup>
+                                <optgroup label="Compatível com XP">
+                                    <option value="avi">AVI</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-600">Qualidade</label>
+                            <select value={quality} onChange={(e) => setQuality(e.target.value)} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                <option value="alta">Alta</option>
+                                <option value="media">Média</option>
+                                <option value="baixa">Baixa</option>
+                            </select>
+                        </div>
+                        <div className="flex items-end">
+                            <button onClick={queueConversion} disabled={!selectedFile} className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                                Adicionar à fila
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm text-gray-600">
+                                Selecione o arquivo de origem ({currentPath ? `compartilhado/${currentPath}` : 'compartilhado/'})
+                            </div>
+                            <div className="max-h-[420px] overflow-auto">
+                                {loading ? (
+                                    <div className="p-6 text-center text-gray-500">Carregando...</div>
+                                ) : (
+                                    <table className="w-full text-sm">
+                                        <tbody>
+                                            {files.map((f, idx) => (
+                                                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="px-4 py-2 w-10">{f.is_dir ? '📁' : '📄'}</td>
+                                                    <td className="px-4 py-2">
+                                                        {f.is_dir ? (
+                                                            <button onClick={() => fetchFiles(f.path)} className="text-blue-600 hover:underline">{f.name}</button>
+                                                        ) : (
+                                                            <button onClick={() => setSelectedFile(f)} className={`text-left w-full ${selectedFile?.path === f.path ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>{f.name}</button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-xl p-4">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-3">Fila de Conversões</h3>
+                            <div className="space-y-3 max-h-[420px] overflow-auto">
+                                {jobs.length === 0 && <p className="text-sm text-gray-500">Nenhuma conversão na fila.</p>}
+                                {jobs.map(job => (
+                                    <div key={job.job_id} className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-800 truncate" title={job.input_path}>{job.input_path}</p>
+                                                <p className="text-xs text-gray-500">→ {job.formato_destino?.toUpperCase()} • {job.qualidade}</p>
+                                            </div>
+                                            {job.status === 'em_andamento' && (
+                                                <button onClick={() => cancelJob(job.job_id)} className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200">Cancelar</button>
+                                            )}
+                                        </div>
+                                        <div className="mt-2 w-full bg-gray-200 h-2 rounded-full">
+                                            <div className={`h-2 rounded-full ${job.status === 'erro' ? 'bg-red-500' : job.status === 'cancelado' ? 'bg-gray-400' : 'bg-blue-600'}`} style={{ width: `${job.progress || 0}%` }}></div>
+                                        </div>
+                                        <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                                            <span>{job.status}</span>
+                                            <span>{job.progress || 0}%</span>
+                                        </div>
+                                        {job.output_path && <a href={`/classico/download/${encodeURIComponent(job.output_path)}`} className="mt-2 inline-block text-xs text-blue-600 hover:underline">Baixar convertido</a>}
+                                        {job.error && <p className="mt-2 text-xs text-red-600 whitespace-pre-wrap">{job.error}</p>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: BACKUP ---
+        function BackupSection() {
+            const [pathInput, setPathInput] = useState('');
+            const [folders, setFolders] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [running, setRunning] = useState(false);
+            const [jobId, setJobId] = useState(null);
+            const [status, setStatus] = useState(null);
+            const [showErrors, setShowErrors] = useState(false);
+
+            const loadConfig = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch('/api/backup/config');
+                    if (!res.ok) throw new Error('Falha ao carregar configuração de backup');
+                    const data = await res.json();
+                    setFolders(data.folders || []);
+                } catch (e) {
+                    alert(e.message || 'Erro ao carregar configuração');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadConfig();
+            }, []);
+
+            useEffect(() => {
+                if (!running || !jobId) return;
+
+                const poll = async () => {
+                    try {
+                        const res = await fetch(`/api/backup/status/${jobId}`);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        setStatus(data);
+                        if (data.status === 'concluido' || data.status === 'erro') {
+                            setRunning(false);
+                            loadConfig();
+                        }
+                    } catch (e) {}
+                };
+
+                poll();
+                const id = setInterval(poll, 1000);
+                return () => clearInterval(id);
+            }, [running, jobId]);
+
+            const saveConfig = async (paths) => {
+                const res = await fetch('/api/backup/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paths }),
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || 'Falha ao salvar configuração');
+                }
+                const data = await res.json();
+                setFolders(data.folders || []);
+            };
+
+            const addFolder = async () => {
+                const value = pathInput.trim();
+                if (!value) return;
+
+                try {
+                    const currentPaths = folders.map(f => f.source_path);
+                    if (currentPaths.some(p => p.toLowerCase() === value.toLowerCase())) {
+                        alert('Pasta já adicionada.');
+                        return;
+                    }
+                    await saveConfig([...currentPaths, value]);
+                    setPathInput('');
+                } catch (e) {
+                    alert(e.message || 'Erro ao adicionar pasta');
+                }
+            };
+
+            const removeFolder = async (index) => {
+                try {
+                    const res = await fetch(`/api/backup/config/${index}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Falha ao remover pasta');
+                    const data = await res.json();
+                    setFolders(data.folders || []);
+                } catch (e) {
+                    alert(e.message || 'Erro ao remover');
+                }
+            };
+
+            const startBackup = async () => {
+                if (folders.length === 0) {
+                    alert('Adicione ao menos uma pasta para backup.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/backup/executar', { method: 'POST' });
+                    if (!res.ok) throw new Error('Falha ao iniciar backup');
+                    const data = await res.json();
+                    setJobId(data.job_id);
+                    setStatus({
+                        status: 'em_andamento',
+                        total: 0,
+                        copiados: 0,
+                        ignorados: 0,
+                        erros: 0,
+                        last_errors: [],
+                        progress: 0,
+                    });
+                    setShowErrors(false);
+                    setRunning(true);
+                } catch (e) {
+                    alert(e.message || 'Erro ao iniciar backup');
+                }
+            };
+
+            const formatBackupDate = (text) => {
+                if (!text) return 'Nunca sincronizado';
+                return text.replace('T', ' ');
+            };
+
+            return (
+                <div className="p-8 h-full overflow-auto flex flex-col gap-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Backup e Sincronia</h2>
+                        <p className="text-sm text-gray-500 mt-1">Sincronização manual Windows 10 → compartilhado/backups/</p>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl p-4">
+                        <label className="text-xs font-medium text-gray-600">Adicionar pasta do Windows 10</label>
+                        <div className="mt-2 flex gap-2">
+                            <input
+                                type="text"
+                                value={pathInput}
+                                onChange={(e) => setPathInput(e.target.value)}
+                                placeholder="Ex: C:\\Users\\willi\\Documentos"
+                                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            />
+                            <button onClick={addFolder} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Adicionar</button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm text-gray-600">Pastas configuradas ({folders.length})</div>
+                        {loading ? (
+                            <div className="p-6 text-sm text-gray-500">Carregando...</div>
+                        ) : folders.length === 0 ? (
+                            <div className="p-6 text-sm text-gray-500">Nenhuma pasta configurada.</div>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                                    <tr>
+                                        <th className="text-left px-4 py-2">Pasta de origem</th>
+                                        <th className="text-left px-4 py-2">Último backup</th>
+                                        <th className="text-right px-4 py-2">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {folders.map((f, idx) => (
+                                        <tr key={`${f.source_path}-${idx}`} className="border-b border-gray-100">
+                                            <td className="px-4 py-2 font-mono text-xs text-gray-700">{f.source_path}</td>
+                                            <td className="px-4 py-2 text-gray-600">{formatBackupDate(f.last_backup)}</td>
+                                            <td className="px-4 py-2 text-right">
+                                                <button onClick={() => removeFolder(idx)} className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200">Remover</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button onClick={startBackup} disabled={running || folders.length === 0} className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                            {running ? 'Backup em andamento...' : 'Iniciar Backup Agora'}
+                        </button>
+                        <button onClick={loadConfig} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Atualizar lista</button>
+                    </div>
+
+                    {status && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-4">
+                            <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                <span>Status: {status.status}</span>
+                                <span>{status.progress || 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 h-2 rounded-full">
+                                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${status.progress || 0}%` }}></div>
+                            </div>
+
+                            <div className="mt-3 text-sm text-gray-700 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <p><span className="text-gray-500">Copiados:</span> {status.copiados || 0}</p>
+                                <p><span className="text-gray-500">Ignorados:</span> {status.ignorados || 0}</p>
+                                <p><span className="text-gray-500">Erros:</span> {status.erros || 0}</p>
+                            </div>
+
+                            {(status.status === 'concluido' || status.status === 'erro') && (
+                                <p className="mt-3 text-sm text-gray-700">
+                                    Resumo: <strong>{status.copiados || 0}</strong> arquivos copiados, <strong>{status.ignorados || 0}</strong> ignorados (sem mudanças), <strong>{status.erros || 0}</strong> erros.
+                                </p>
+                            )}
+
+                            {(status.last_errors || []).length > 0 && (
+                                <div className="mt-3">
+                                    <button onClick={() => setShowErrors(v => !v)} className="text-sm text-amber-700 hover:underline">
+                                        {showErrors ? 'Ocultar erros' : `Ver erros (${status.last_errors.length})`}
+                                    </button>
+                                    {showErrors && (
+                                        <div className="mt-2 bg-amber-50 border border-amber-200 rounded p-3 text-xs font-mono text-amber-900 space-y-1">
+                                            {status.last_errors.map((err, idx) => <p key={idx}>{err}</p>)}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- SEÇÃO: VERSÕES ---
+        function VersionsSection() {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState('backups');
+            const [loadingFiles, setLoadingFiles] = useState(true);
+            const [selectedFile, setSelectedFile] = useState(null);
+            const [versions, setVersions] = useState([]);
+            const [loadingVersions, setLoadingVersions] = useState(false);
+            const [restoreModal, setRestoreModal] = useState({ open: false, versionPath: null });
+            const [cacheStats, setCacheStats] = useState(null);
+            const [cleanupMode, setCleanupMode] = useState('30d');
+            const [cleanupDate, setCleanupDate] = useState('');
+            const [cleaningCache, setCleaningCache] = useState(false);
+
+            const formatIso = (value) => {
+                if (!value) return '—';
+                return value.replace('T', ' ');
+            };
+
+            const fetchCacheStats = async () => {
+                try {
+                    const res = await fetch('/api/versoes/cache/stats');
+                    if (!res.ok) throw new Error('Falha ao carregar estatísticas do cache');
+                    const data = await res.json();
+                    setCacheStats(data);
+                } catch (e) {}
+            };
+
+            const fetchFiles = async (path = 'backups') => {
+                setLoadingFiles(true);
+                try {
+                    const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+                    if (!res.ok) throw new Error('Falha ao carregar arquivos de backup');
+                    const data = await res.json();
+                    setFiles(data.files || []);
+                    setCurrentPath(data.current_path || 'backups');
+                } catch (e) {
+                    alert(e.message || 'Erro ao carregar backups');
+                } finally {
+                    setLoadingFiles(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchFiles('backups');
+                fetchCacheStats();
+            }, []);
+
+            const loadVersions = async (filePath) => {
+                setLoadingVersions(true);
+                setSelectedFile(filePath);
+                try {
+                    const res = await fetch(`/api/versoes?path=${encodeURIComponent(filePath)}`);
+                    if (!res.ok) throw new Error('Falha ao carregar histórico');
+                    const data = await res.json();
+                    setVersions(data.versions || []);
+                } catch (e) {
+                    setVersions([]);
+                    alert(e.message || 'Erro ao buscar versões');
+                } finally {
+                    setLoadingVersions(false);
+                }
+            };
+
+            const confirmRestore = async () => {
+                const versionPath = restoreModal.versionPath;
+                if (!versionPath || !selectedFile) return;
+
+                try {
+                    const res = await fetch('/api/versoes/restaurar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version_path: versionPath,
+                            destination_path: selectedFile,
+                        }),
+                    });
+                    if (!res.ok) throw new Error('Falha ao restaurar versão');
+                    setRestoreModal({ open: false, versionPath: null });
+                    await loadVersions(selectedFile);
+                    await fetchCacheStats();
+                    alert('Versão restaurada com sucesso.');
+                } catch (e) {
+                    alert(e.message || 'Erro ao restaurar versão');
+                }
+            };
+
+            const cleanupCache = async () => {
+                const until = cleanupMode === 'date' ? cleanupDate : cleanupMode;
+                if (!until) {
+                    alert('Selecione uma regra para limpeza.');
+                    return;
+                }
+
+                const label = cleanupMode === 'date' ? `até ${cleanupDate}` : cleanupMode;
+                const confirmed = window.confirm(`Limpar cache de versões ${label}?`);
+                if (!confirmed) return;
+
+                setCleaningCache(true);
+                try {
+                    const res = await fetch('/api/versoes/cache/limpar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ until }),
+                    });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || 'Falha ao limpar cache');
+                    }
+                    const data = await res.json();
+                    setCacheStats(data.stats || null);
+
+                    if (selectedFile) {
+                        await loadVersions(selectedFile);
+                    }
+
+                    alert(`Limpeza concluída: ${data.removed_files || 0} arquivos removidos (${data.removed_size_formatted || '0 B'}).`);
+                } catch (e) {
+                    alert(e.message || 'Erro ao limpar cache');
+                } finally {
+                    setCleaningCache(false);
+                }
+            };
+
+            return (
+                <div className="p-8 h-full flex flex-col gap-6 overflow-hidden">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Histórico de Versões</h2>
+                        <p className="text-sm text-gray-500 mt-1">Restaure versões anteriores de arquivos dentro de backups/</p>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+                            <div className="flex-1 text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <p><span className="text-gray-500">Arquivos no cache:</span> <strong>{cacheStats?.total_files ?? 0}</strong></p>
+                                <p><span className="text-gray-500">Tamanho total:</span> <strong>{cacheStats?.total_size_formatted ?? '0 B'}</strong></p>
+                                <p><span className="text-gray-500">Mais antigo:</span> {formatIso(cacheStats?.oldest)}</p>
+                                <p><span className="text-gray-500">Mais recente:</span> {formatIso(cacheStats?.newest)}</p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-500">Limpar versões</label>
+                                    <select value={cleanupMode} onChange={(e) => setCleanupMode(e.target.value)} className="block mt-1 border border-gray-300 rounded px-2 py-2 text-sm">
+                                        <option value="7d">mais antigas que 7 dias</option>
+                                        <option value="30d">mais antigas que 30 dias</option>
+                                        <option value="90d">mais antigas que 90 dias</option>
+                                        <option value="180d">mais antigas que 180 dias</option>
+                                        <option value="365d">mais antigas que 365 dias</option>
+                                        <option value="date">até uma data específica</option>
+                                        <option value="all">todo o cache</option>
+                                    </select>
+                                </div>
+
+                                {cleanupMode === 'date' && (
+                                    <div>
+                                        <label className="text-xs text-gray-500">Data limite</label>
+                                        <input type="date" value={cleanupDate} onChange={(e) => setCleanupDate(e.target.value)} className="block mt-1 border border-gray-300 rounded px-2 py-2 text-sm" />
+                                    </div>
+                                )}
+
+                                <button onClick={cleanupCache} disabled={cleaningCache || (cleanupMode === 'date' && !cleanupDate)} className="px-3 py-2 rounded bg-rose-600 text-white text-sm hover:bg-rose-700 disabled:opacity-50">
+                                    {cleaningCache ? 'Limpando...' : 'Limpar cache'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col min-h-0">
+                            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm text-gray-600 flex justify-between items-center">
+                                <span>{currentPath ? `compartilhado/${currentPath}` : 'compartilhado/backups'}</span>
+                                <button onClick={() => fetchFiles(currentPath || 'backups')} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Atualizar</button>
+                            </div>
+
+                            <div className="flex-1 overflow-auto">
+                                {loadingFiles ? (
+                                    <div className="p-6 text-sm text-gray-500">Carregando...</div>
+                                ) : (
+                                    <table className="w-full text-sm">
+                                        <tbody>
+                                            {files.map((f, idx) => (
+                                                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="px-4 py-2 w-10">{f.is_dir ? '📁' : '📄'}</td>
+                                                    <td className="px-4 py-2">
+                                                        {f.is_dir ? (
+                                                            <button onClick={() => fetchFiles(f.path)} className="text-blue-600 hover:underline">{f.name}</button>
+                                                        ) : (
+                                                            <button onClick={() => loadVersions(f.path)} className={`text-left w-full truncate ${selectedFile === f.path ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>{f.name}</button>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-xs text-gray-500 text-right">{f.size}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col min-h-0">
+                            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 text-sm text-gray-600">
+                                {selectedFile ? `Versões: ${selectedFile}` : 'Selecione um arquivo em backups/'}
+                            </div>
+
+                            <div className="flex-1 overflow-auto p-4 space-y-3">
+                                {!selectedFile ? (
+                                    <p className="text-sm text-gray-500">Clique em um arquivo para ver o histórico.</p>
+                                ) : loadingVersions ? (
+                                    <p className="text-sm text-gray-500">Carregando versões...</p>
+                                ) : versions.length === 0 ? (
+                                    <p className="text-sm text-gray-500">Nenhuma versão anterior disponível.</p>
+                                ) : (
+                                    versions.map((v, idx) => (
+                                        <div key={`${v.version_path}-${idx}`} className="border border-gray-200 rounded-lg p-3">
+                                            <div className="text-sm text-gray-800 font-medium">{v.date}</div>
+                                            <div className="text-xs text-gray-500 mt-1">{v.size_formatted}</div>
+                                            <div className="text-[10px] text-gray-400 font-mono mt-1 break-all">{v.version_path}</div>
+                                            <div className="mt-2 text-right">
+                                                <button onClick={() => setRestoreModal({ open: true, versionPath: v.version_path })} className="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700">Restaurar</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {restoreModal.open && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Confirmar restauração</h3>
+                                <p className="text-sm text-gray-600 mb-4">A versão atual do arquivo será preservada no histórico antes da restauração. Deseja continuar?</p>
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => setRestoreModal({ open: false, versionPath: null })} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Cancelar</button>
+                                    <button onClick={confirmRestore} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Restaurar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function SettingsSection({ bibliotecas, bibliotecaAtivaId, refreshBibliotecas }) {
+            const [adding, setAdding] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [saving, setSaving] = useState(false);
+            const [form, setForm] = useState({ id: '', nome: '', caminho: '', icone: '📁' });
+
+            const resetForm = () => {
+                setForm({ id: '', nome: '', caminho: '', icone: '📁' });
+            };
+
+            const startAdd = () => {
+                setAdding(true);
+                setEditingId(null);
+                setForm({ id: '', nome: '', caminho: '', icone: '📁' });
+            };
+
+            const startEdit = (lib) => {
+                setAdding(false);
+                setEditingId(lib.id);
+                setForm({ id: lib.id, nome: lib.nome, caminho: lib.caminho, icone: lib.icone || '📁' });
+            };
+
+            const submitCreate = async () => {
+                if (!form.id.trim() || !form.nome.trim() || !form.caminho.trim()) {
+                    alert('Preencha id, nome e caminho.');
+                    return;
+                }
+
+                setSaving(true);
+                try {
+                    const res = await fetch('/api/bibliotecas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(form),
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    setAdding(false);
+                    resetForm();
+                    await refreshBibliotecas(form.id);
+                } catch (e) {
+                    alert(e.message || 'Erro ao criar biblioteca');
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const submitUpdate = async () => {
+                if (!editingId) return;
+                if (!form.nome.trim() || !form.caminho.trim()) {
+                    alert('Preencha nome e caminho.');
+                    return;
+                }
+
+                setSaving(true);
+                try {
+                    const res = await fetch(`/api/bibliotecas/${encodeURIComponent(editingId)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nome: form.nome, caminho: form.caminho, icone: form.icone }),
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    setEditingId(null);
+                    resetForm();
+                    await refreshBibliotecas(bibliotecaAtivaId);
+                } catch (e) {
+                    alert(e.message || 'Erro ao atualizar biblioteca');
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const removeLibrary = async (lib) => {
+                if (lib.classico) return;
+                if (!window.confirm(`Remover a biblioteca "${lib.nome}"?`)) return;
+
+                try {
+                    const res = await fetch(`/api/bibliotecas/${encodeURIComponent(lib.id)}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error(await res.text());
+                    await refreshBibliotecas();
+                } catch (e) {
+                    alert(e.message || 'Erro ao remover biblioteca');
+                }
+            };
+
+            const setClassico = async (lib) => {
+                if (lib.classico) return;
+                if (!window.confirm(`Definir "${lib.nome}" como biblioteca do Clássico XP?`)) return;
+
+                try {
+                    const res = await fetch(`/api/bibliotecas/${encodeURIComponent(lib.id)}/definir-classico`, { method: 'POST' });
+                    if (!res.ok) throw new Error(await res.text());
+                    await refreshBibliotecas(lib.id);
+                } catch (e) {
+                    alert(e.message || 'Erro ao definir biblioteca clássica');
+                }
+            };
+
+            return (
+                <div className="p-8 h-full overflow-auto flex flex-col gap-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Configurações</h2>
+                            <p className="text-sm text-gray-500 mt-1">Gerencie as bibliotecas do RetroLink</p>
+                        </div>
+                        <button onClick={startAdd} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Adicionar Biblioteca</button>
+                    </div>
+
+                    {(adding || editingId) && (
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input disabled={!!editingId} value={form.id} onChange={(e) => setForm(prev => ({ ...prev, id: e.target.value }))} placeholder="id (ex: filmes)" className="border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-100" />
+                            <input value={form.nome} onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))} placeholder="Nome" className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                            <input value={form.caminho} onChange={(e) => setForm(prev => ({ ...prev, caminho: e.target.value }))} placeholder="Caminho (ex: D:\\Filmes)" className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                            <input value={form.icone} onChange={(e) => setForm(prev => ({ ...prev, icone: e.target.value }))} placeholder="Ícone (🎬 🎵 📁 🎮 📸)" className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                            <div className="md:col-span-4 flex justify-end gap-2">
+                                <button onClick={() => { setAdding(false); setEditingId(null); resetForm(); }} className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-sm">Cancelar</button>
+                                <button onClick={editingId ? submitUpdate : submitCreate} disabled={saving} className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 text-sm">
+                                    {saving ? 'Salvando...' : (editingId ? 'Salvar alterações' : 'Criar biblioteca')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {bibliotecas.map((lib) => (
+                            <div key={lib.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                                <div className="flex justify-between items-start gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                            <span>{lib.icone || '📁'}</span>
+                                            <span className="truncate">{lib.nome}</span>
+                                            {lib.classico && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">Clássico XP</span>}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1 font-mono break-all">{lib.caminho}</p>
+                                        <p className="text-[11px] text-gray-400 mt-1">id: {lib.id}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button onClick={() => startEdit(lib)} className="px-3 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200">Editar</button>
+                                    <button onClick={() => removeLibrary(lib)} disabled={lib.classico} className="px-3 py-1.5 text-xs rounded bg-rose-100 text-rose-700 hover:bg-rose-200 disabled:opacity-40">Remover</button>
+                                    <button onClick={() => setClassico(lib)} disabled={lib.classico} className="px-3 py-1.5 text-xs rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-40">Definir como Clássico</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function FilesSection({ bibliotecaAtivaId, bibliotecaAtiva }) {
+            const [files, setFiles] = useState([]);
+            const [currentPath, setCurrentPath] = useState("");
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            
+            // Estados de Upload
+            const [isDragging, setIsDragging] = useState(false);
+            const [uploadProgress, setUploadProgress] = useState(0);
+            const [isUploading, setIsUploading] = useState(false);
+            const fileInputRef = useRef(null);
+
+            const fetchFiles = async (path = "") => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(`/api/files?path=${encodeURIComponent(path)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                    if (!response.ok) throw new Error("Erro ao carregar diretório.");
+                    const data = await response.json();
+                    setFiles(data.files);
+                    setCurrentPath(data.current_path);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                    
+                }
+            };
+
+            useEffect(() => {
+                fetchFiles(currentPath);
+            }, []);
+
+            // Handlers de Drag & Drop
+            const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+            const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
+            const handleDrop = (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleUpload(e.dataTransfer.files[0]);
+                }
+            };
+            
+            // Handler de Upload manual (clique)
+            const handleFileInput = (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    handleUpload(e.target.files[0]);
+                }
+            };
+
+            const handleUpload = (file) => {
+                if (!file) return;
+                setIsUploading(true);
+                setUploadProgress(0);
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Usamos XMLHttpRequest porque o fetch API nativo não suporta evento de progresso de upload
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percentComplete);
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    setIsUploading(false);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        fetchFiles(currentPath); // Atualiza a lista após sucesso
+                    } else {
+                        alert("Erro no upload: " + xhr.responseText);
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    setIsUploading(false);
+                    alert("Erro na conexão durante o upload.");
+                });
+
+                xhr.open('POST', `/classico/upload?path=${encodeURIComponent(currentPath)}&biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`);
+                xhr.send(formData);
+            };
+
+            return (
+                <div className="p-8 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Meus Arquivos</h2>
+                            <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                                <Icon name="map-pin" className="w-4 h-4" />
+                                {currentPath ? `${bibliotecaAtiva?.nome || 'Biblioteca'}/${currentPath}` : `${bibliotecaAtiva?.nome || 'Biblioteca'}/`}
+                            </div>
+                        </div>
+                        
+                        <button 
+                            onClick={() => fetchFiles(currentPath)}
+                            className="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                            title="Atualizar"
+                        >
+                            <Icon name="refresh-cw" className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Área de Upload / Drag & Drop */}
+                    <div 
+                        className={`mb-6 border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                            isDragging ? 'drag-active' : 'border-gray-300 bg-white hover:bg-gray-50'
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => !isUploading && fileInputRef.current.click()}
+                        style={{ cursor: isUploading ? 'not-allowed' : 'pointer' }}
+                    >
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            style={{ display: 'none' }} 
+                            onChange={handleFileInput} 
+                        />
+                        
+                        {isUploading ? (
+                            <div className="max-w-md mx-auto">
+                                <div className="mb-2 text-sm font-medium text-blue-700 flex justify-between">
+                                    <span>Enviando arquivo...</span>
+                                    <span>{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center text-gray-500">
+                                <Icon name="upload-cloud" className="w-10 h-10 mb-3 text-blue-500" />
+                                <p className="font-medium text-gray-700">Clique para enviar ou arraste os arquivos aqui</p>
+                                <p className="text-sm mt-1">Qualquer formato é suportado</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Lista de Arquivos */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-auto">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-40 text-gray-500">
+                                <Icon name="loader-2" className="w-8 h-8 animate-spin" />
+                            </div>
+                        ) : error ? (
+                            <div className="p-8 text-center text-red-500">
+                                <Icon name="alert-triangle" className="w-12 h-12 mx-auto mb-3" />
+                                <p>{error}</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-200">
+                                        <th className="px-6 py-3 font-medium w-16 text-center">Tipo</th>
+                                        <th className="px-6 py-3 font-medium">Nome</th>
+                                        <th className="px-6 py-3 font-medium w-32">Tamanho</th>
+                                        <th className="px-6 py-3 font-medium w-32 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {files.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="4" className="px-6 py-12 text-center text-gray-400">
+                                                Nenhum arquivo encontrado nesta pasta.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        files.map((f, idx) => (
+                                            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-3 text-center text-xl">{f.icon}</td>
+                                                <td className="px-6 py-3 font-medium text-gray-700">
+                                                    {f.is_dir ? (
+                                                        <button 
+                                                            onClick={() => fetchFiles(f.path)}
+                                                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-2"
+                                                        >
+                                                            {f.name}
+                                                        </button>
+                                                    ) : (
+                                                        f.name
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-3 text-sm text-gray-500">{f.size}</td>
+                                                <td className="px-6 py-3 text-right">
+                                                    {!f.is_dir && (
+                                                        <a 
+                                                            href={`/classico/download/${f.path}?biblioteca_id=${encodeURIComponent(bibliotecaAtivaId || '')}`} 
+                                                            className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                            title="Baixar"
+                                                        >
+                                                            <Icon name="download" className="w-5 h-5" />
+                                                        </a>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        {% endraw %}
+    </script>
+</body>
+</html>
