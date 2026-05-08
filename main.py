@@ -26,6 +26,10 @@ from fastapi.templating import Jinja2Templates
 BASE_DIR = Path(__file__).resolve().parent
 SHARED_DIR = Path(os.environ.get("RETROLINK_SHARED_DIR", "./compartilhado")).resolve()
 SHARED_DIR.mkdir(parents=True, exist_ok=True)
+
+# Configurações via variáveis de ambiente
+MAX_WORKERS = int(os.environ.get("RETROLINK_MAX_WORKERS", "2"))
+PAGE_SIZE = int(os.environ.get("RETROLINK_PAGE_SIZE", "50"))
 BIBLIOTECAS_FILE = BASE_DIR / "bibliotecas.json"
 
 CACHE_DIR = SHARED_DIR / ".cache"
@@ -38,10 +42,25 @@ VERSIONS_DIR = CACHE_DIR / "versoes"
 VERSIONS_DIR.mkdir(parents=True, exist_ok=True)
 BACKUP_CONFIG_FILE = CACHE_DIR / "backup_config.json"
 NOTES_FILE = CACHE_DIR / "notas.txt"
+DUPLICATAS_CACHE_FILE = CACHE_DIR / "duplicatas_cache.json"
+VISITS_FILE = CACHE_DIR / "visits.txt"
+MURAL_FILE  = CACHE_DIR / "mural.json"
+SOBRE_FILE  = CACHE_DIR / "sobre.txt"
+MURAL_MAX   = 100
+NOTICIAS_CACHE_FILE = CACHE_DIR / "noticias_cache.json"
+MARQUEE_CACHE_FILE  = CACHE_DIR / "marquee_cache.json"
+
+_SOBRE_DEFAULT = (
+    "Bem-vindo ao RetroLink!\n\n"
+    "Este eh um servidor de arquivos pessoal, criado para compartilhar\n"
+    "e acessar arquivos na rede local com estilo retro dos anos 2000.\n\n"
+    "Desenvolvido com FastAPI + Jinja2 + HTML Classico."
+)
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.heif', '.tif', '.tiff'}
 VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.mpg', '.mpeg'}
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.wav', '.m4a', '.aac'}
+MUSIC_EXTS       = {'.mp3', '.ogg'}  # formatos reproduzíveis nativamente em browsers antigos
 
 organize_status = {
     "status": "idle",
@@ -57,7 +76,7 @@ conversion_jobs_lock = asyncio.Lock()
 
 backup_jobs: dict[str, dict[str, Any]] = {}
 backup_jobs_lock = threading.Lock()
-backup_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="retrolink-backup")
+backup_executor = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="retrolink-backup")
 
 async def shutdown_cleanup_conversion_processes():
     """Finaliza processos ffmpeg pendentes para evitar ruído no encerramento do servidor."""
@@ -250,11 +269,12 @@ def get_file_icon(filename: str) -> str:
 
 def get_file_size_formatted(size_bytes: int) -> str:
     """Formata o tamanho do arquivo para uma leitura mais amigável."""
+    value: float = float(size_bytes)
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} PB"
+        if value < 1024.0:
+            return f"{value:.1f} {unit}"
+        value /= 1024.0
+    return f"{value:.1f} PB"
 
 def get_unique_destination_path(target_dir: Path, filename: str, reserved: set[str]) -> Path:
     """Gera caminho único sem sobrescrever arquivos existentes (nome, nome_2, nome_3...)."""
@@ -656,9 +676,28 @@ def cleanup_versions_cache(until: str) -> dict[str, Any]:
         "stats": get_versions_cache_stats(),
     }
 
+def _load_duplicatas_cache() -> dict[str, dict[str, Any]]:
+    """Carrega cache de hashes de duplicatas do disco."""
+    if not DUPLICATAS_CACHE_FILE.exists():
+        return {}
+    try:
+        data = json.loads(DUPLICATAS_CACHE_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
+
+def _save_duplicatas_cache(cache: dict[str, dict[str, Any]]):
+    """Salva cache de hashes de duplicatas no disco."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    DUPLICATAS_CACHE_FILE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+
 def build_duplicates_report() -> dict[str, Any]:
     md5_groups: dict[str, list[dict[str, Any]]] = {}
     image_hashes: list[dict[str, Any]] = []
+    cache = _load_duplicatas_cache()
+    new_cache: dict[str, dict[str, Any]] = {}
 
     for item in SHARED_DIR.rglob("*"):
         if not item.is_file():
@@ -669,8 +708,29 @@ def build_duplicates_report() -> dict[str, Any]:
             continue
 
         try:
-            size = item.stat().st_size
-            md5 = file_md5(item)
+            stat = item.stat()
+            size = stat.st_size
+            mtime = stat.st_mtime
+            abs_key = str(item.resolve())
+
+            # Verifica cache: se mtime não mudou, reutiliza hashes salvos
+            cached = cache.get(abs_key)
+            if cached and cached.get("mtime") == mtime:
+                md5 = cached["md5"]
+                ph_value = cached.get("phash")
+            else:
+                md5 = file_md5(item)
+                ph_value = None
+                if item.suffix.lower() in IMAGE_EXTENSIONS:
+                    ph = image_phash(item)
+                    if ph is not None:
+                        ph_value = ph
+
+            # Atualiza novo cache
+            new_cache[abs_key] = {"md5": md5, "mtime": mtime}
+            if ph_value is not None:
+                new_cache[abs_key]["phash"] = ph_value
+
             payload = {
                 "path": rel,
                 "name": item.name,
@@ -678,12 +738,15 @@ def build_duplicates_report() -> dict[str, Any]:
             }
             md5_groups.setdefault(md5, []).append(payload)
 
-            if item.suffix.lower() in IMAGE_EXTENSIONS:
-                ph = image_phash(item)
-                if ph is not None:
-                    image_hashes.append({**payload, "phash": ph})
+            if ph_value is not None:
+                image_hashes.append({**payload, "phash": ph_value})
+            elif item.suffix.lower() in IMAGE_EXTENSIONS and cached and cached.get("mtime") == mtime and "phash" not in cached:
+                # Imagem sem phash no cache anterior (falhou antes), tenta novamente não
+                pass
         except Exception:
             continue
+
+    _save_duplicatas_cache(new_cache)
 
     identical = []
     for md5, files in md5_groups.items():
@@ -1152,6 +1215,16 @@ async def api_delete_duplicatas(payload: dict[str, Any] = Body(default={})):
 
     return {"deleted": deleted, "freed_bytes": freed_bytes}
 
+@app.post("/api/duplicatas/cache/limpar")
+async def api_duplicatas_cache_limpar():
+    """Invalida o cache de hashes de duplicatas, forçando recálculo completo na próxima chamada."""
+    try:
+        if DUPLICATAS_CACHE_FILE.exists():
+            DUPLICATAS_CACHE_FILE.unlink()
+        return {"ok": True, "mensagem": "Cache de duplicatas removido"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/converter")
 async def api_converter(payload: dict[str, Any] = Body(default={})):
     input_rel = payload.get("path", "")
@@ -1370,18 +1443,20 @@ async def api_get_thumbnail(
         ext = file_path.suffix.lower()
         # Se for vídeo, extrair o primeiro frame
         if ext in ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv']:
+            ffmpeg_ok = False
             try:
                 # Tenta usar o ffmpeg primeiro
-                process = await asyncio.create_subprocess_exec(
-                    'ffmpeg', '-y', '-i', str(file_path), '-vframes', '1', 
+                _ffmpeg_proc = await asyncio.create_subprocess_exec(
+                    'ffmpeg', '-y', '-i', str(file_path), '-vframes', '1',
                     '-vf', 'scale=300:-1', str(cache_path),
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL
                 )
-                await process.communicate()
+                await _ffmpeg_proc.communicate()
+                ffmpeg_ok = True
             except FileNotFoundError:
                 # ffmpeg não está no PATH, usa OpenCV (cv2) como fallback
-                process = None
+                ffmpeg_ok = False
                 
             # Se o ffmpeg falhou ou não existe, usa cv2
             if not cache_path.exists():
@@ -1458,20 +1533,20 @@ async def api_get_exif(
                     try:
                         parts = date_str.split(" ")
                         metadata["date"] = f"{parts[0].replace(':', '/')} {parts[1]}"
-                    except:
+                    except Exception:
                         metadata["date"] = date_str
                 
                 # Resolução original
                 metadata["resolution"] = f"{img.width} x {img.height}"
                 
                 return metadata
-        except Exception as e:
+        except Exception:
             # Se não tiver EXIF ou não for JPEG/TIFF suportado, retornar objeto vazio
             return {}
-            
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         return {}
 
 @app.get("/api/video-info")
@@ -1508,7 +1583,8 @@ async def api_get_video_info(
                     info["duration"] = f"{int(hours):02d}:{int(mins):02d}:{int(secs):02d}"
                 else:
                     info["duration"] = f"{int(mins):02d}:{int(secs):02d}"
-            except: pass
+            except Exception:
+                pass
             
         # Parse streams de vídeo para resolução e codec
         for stream in data.get("streams", []):
@@ -1609,18 +1685,322 @@ async def api_stream_video(
             media_type="video/mp4"
         )
 
+def _get_visit_count() -> int:
+    try:
+        if VISITS_FILE.exists():
+            return int(VISITS_FILE.read_text(encoding="utf-8").strip())
+    except Exception:
+        pass
+    return 0
+
+def _increment_visit_count() -> int:
+    count = _get_visit_count() + 1
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        VISITS_FILE.write_text(str(count), encoding="utf-8")
+    except Exception:
+        pass
+    return count
+
+_DICAS = [
+    "Use o modo classico para acessar pelo Windows XP via rede local!",
+    "Organize suas fotos por data EXIF usando o Modo Moderno.",
+    "Faca backups regulares das suas pastas importantes.",
+    "Use o conversor para transformar videos AVI em MP4 compativeis.",
+    "O bloco de notas eh compartilhado entre todos os dispositivos da rede.",
+]
+
+# ---------------------------------------------------------------------------
+# Conteúdo gerado por IA (OpenAI)
+# ---------------------------------------------------------------------------
+
+_NOTICIAS_FALLBACK: list[dict] = [
+    {"titulo": "Age of Empires II: lan house de Curitiba bate recorde de 200 PCs", "fonte": "GameWorld BR", "data": "15/03/2002", "corpo": "O clássico da Microsoft domina as lan houses nacionais. Especialistas atribuem o sucesso ao combo coxinha e Skol gelada.", "tipo": "games"},
+    {"titulo": "EXCLUSIVO: Serafina das Sombras, musa de jogo inexistente, viraliza no eMule", "fonte": "GameWorld BR", "data": "22/07/2001", "corpo": "Wallpapers da guerreira fictícia dominam os downloads do Kazaa. Fã de Recife afirma ter recebido e-mail dela.", "tipo": "musa"},
+    {"titulo": "Counter-Strike: clan brasileiro elimina europeus com o rush total", "fonte": "GameWorld BR", "data": "08/11/2002", "corpo": "O Clan Pantanal Supremo desbancou os melhores times europeus. Líder comemora: minha mãe desligou o roteador e ganhamos na raça.", "tipo": "games"},
+    {"titulo": "PICANTE: Viridiana Stormblast causa histeria por ser de jogo que não existe", "fonte": "GameWorld BR", "data": "30/09/2001", "corpo": "Dezenas de portais publicaram imagens da suposta heroína de RPG. Nenhum jogo com esse nome foi lançado. O mistério continua.", "tipo": "musa"},
+    {"titulo": "Warcraft III chega ao Brasil por R$129 e esgota em 48h nas lojas", "fonte": "GameWorld BR", "data": "12/01/2003", "corpo": "Filas se formaram desde a madrugada na Saraiva e Americanas. Revendedor clandestino vendeu cópias por R$5 na esquina.", "tipo": "games"},
+]
+
+_MARQUEE_FALLBACK: list[str] = [
+    "ATENCAO: servidor operando em modo turbo desde 1999",
+    "DICA: segurar Ctrl+Alt+Del nao faz voce ganhar mais dinheiro no GTA",
+    "FOFOCA: Lara Croft foi vista comprando pao de queijo em Belo Horizonte",
+    "AVISO: downloads acima de 56kbps sobrecarregam o modem da sua mae",
+    "RUMOR: Counter-Strike 2 esta previsto para rodar em Pentium 75MHz",
+    "ESPECIAL: top 10 motivos pra nao jogar Diablo de madrugada",
+    "BREAKING: Age of Empires III confirmado para rodar em Pentium I",
+    "REVELADO: codigo secreto do Sonic desbloqueou nivel nunca antes visto",
+]
+
+_PROMPT_NOTICIAS = (
+    "Voce e um redator do portal GameWorld BR dos anos 2000. Escreva noticias ficticias e engracadas sobre games "
+    "reais da epoca (1995-2003): Age of Empires, Warcraft, Counter-Strike, Diablo, Quake, StarCraft, GTA, Pokemon, Sonic, Mario, Tomb Raider. "
+    "Inclua tambem noticias picantes sobre musas ficticias de games inexistentes com nomes exagerados e situacoes absurdas. "
+    "Retorne SOMENTE JSON valido sem markdown:\n"
+    '{"noticias":[{"titulo":"...","fonte":"GameWorld BR","data":"DD/MM/AAAA (2001-2003)","corpo":"2-3 frases","tipo":"games ou musa"}]}\n'
+    "Gere exatamente 5 noticias: 3 de games, 2 de musas ficticias."
+)
+
+_PROMPT_MARQUEE = (
+    "Voce escreve textos curtos para o marquee de um site retro de games dos anos 2000 chamado RetroLink. "
+    "Misture: dicas inutils de games, fofocas ficticias sobre personagens de jogos, avisos absurdos do servidor, piadas de jogador. "
+    "Tom sensacionalista e exagerado dos portais brasileiros. "
+    "Retorne SOMENTE JSON valido sem markdown:\n"
+    '{"mensagens":["...","...","...","...","...","...","...","..."]}\n'
+    "Gere exatamente 8 mensagens curtas (maximo 80 caracteres cada)."
+)
+
+def _call_openai_sync(system_prompt: str) -> dict | None:
+    """Chama a API OpenAI de forma sincrona via urllib. Retorna None em qualquer erro."""
+    import urllib.request as _urlreq
+    api_key = os.environ.get("Ciel", "")
+    if not api_key:
+        return None
+    try:
+        payload = json.dumps({
+            "model": "gpt-5-nano-2025-08-07",
+            "messages": [{"role": "system", "content": system_prompt}],
+            "temperature": 0.9,
+        }).encode("utf-8")
+        req = _urlreq.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=payload,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+        content = raw["choices"][0]["message"]["content"].strip()
+        if "```" in content:
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:].lstrip("\n")
+        return json.loads(content.strip())
+    except Exception:
+        return None
+
+def _intercalar_noticias(noticias: list[dict]) -> list[dict]:
+    """Intercala games e musas na ordem: game, musa, game, game, musa."""
+    games = [n for n in noticias if n.get("tipo") == "games"]
+    musas = [n for n in noticias if n.get("tipo") == "musa"]
+    result: list[dict] = []
+    for tipo in ["games", "musa", "games", "games", "musa"]:
+        src = games if tipo == "games" else musas
+        if src:
+            result.append(src.pop(0))
+    return result
+
+_PENSAMENTOS: list[str] = [
+    "Organize hoje, curta amanha.",
+    "Backup nao e custo, e investimento.",
+    "Um servidor lento ainda e melhor que nenhum.",
+    "Organize, categorize, compartilhe.",
+    "A rede local e sua melhor amiga.",
+    "Cuide dos seus arquivos como cuida dos seus jogos.",
+    "Cada pasta organizada e uma vitoria.",
+]
+
+def _get_arquivos_recentes(base_dir: Path, n: int = 5) -> list[dict]:
+    """Retorna os N arquivos mais recentes (mtime) da biblioteca, formatados."""
+    resultado: list[dict] = []
+    try:
+        for root, dirs, files in os.walk(base_dir):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for fname in files:
+                if fname.startswith('.'):
+                    continue
+                fp = Path(root) / fname
+                try:
+                    st = fp.stat()
+                    resultado.append({
+                        "nome": fname,
+                        "rel": fp.relative_to(base_dir).as_posix(),
+                        "mtime": st.st_mtime,
+                        "size": st.st_size,
+                    })
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    resultado.sort(key=lambda x: x["mtime"], reverse=True)
+    resultado = resultado[:n]
+    for r in resultado:
+        r["data"] = datetime.fromtimestamp(r["mtime"]).strftime("%d/%m %H:%M")
+        sz = r["size"]
+        if sz >= 1_073_741_824:
+            r["tamanho"] = f"{sz/1_073_741_824:.1f} GB"
+        elif sz >= 1_048_576:
+            r["tamanho"] = f"{sz/1_048_576:.1f} MB"
+        elif sz >= 1024:
+            r["tamanho"] = f"{sz/1024:.1f} KB"
+        else:
+            r["tamanho"] = f"{sz} B"
+        ext = r["nome"].rsplit('.', 1)[-1].lower() if '.' in r["nome"] else ''
+        if ext in ['jpg','jpeg','png','gif','bmp','webp','tif','tiff']:
+            r["icone"] = "[IMG]"
+        elif ext in ['mp4','avi','mkv','mov','mpg','mpeg','wmv','webm','flv']:
+            r["icone"] = "[VID]"
+        elif ext in ['mp3','wav','flac','ogg','m4a','aac','mid']:
+            r["icone"] = "[AUD]"
+        elif ext in ['zip','rar','7z','tar','gz']:
+            r["icone"] = "[ZIP]"
+        elif ext in ['exe','msi','bat','cmd']:
+            r["icone"] = "[EXE]"
+        else:
+            r["icone"] = "[ARQ]"
+    return resultado
+
+async def _get_noticias_async() -> list[dict]:
+    """Retorna noticias do cache (validade 7 dias) ou gera via API com fallback."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    if NOTICIAS_CACHE_FILE.exists():
+        try:
+            cache = json.loads(NOTICIAS_CACHE_FILE.read_text(encoding="utf-8"))
+            gerado_em = datetime.strptime(cache.get("gerado_em", "2000-01-01"), "%Y-%m-%d")
+            if (datetime.now() - gerado_em).days < 7:
+                return _intercalar_noticias(list(cache.get("noticias", _NOTICIAS_FALLBACK)))
+        except Exception:
+            pass
+    result = await asyncio.to_thread(_call_openai_sync, _PROMPT_NOTICIAS)
+    if result and isinstance(result.get("noticias"), list):
+        noticias = result["noticias"]
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            NOTICIAS_CACHE_FILE.write_text(
+                json.dumps({"gerado_em": today, "noticias": noticias}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+        return _intercalar_noticias(list(noticias))
+    return _intercalar_noticias(list(_NOTICIAS_FALLBACK))
+
+async def _get_marquee_async() -> list[str]:
+    """Retorna mensagens do marquee do cache (validade 1 dia) ou gera via API com fallback."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    if MARQUEE_CACHE_FILE.exists():
+        try:
+            cache = json.loads(MARQUEE_CACHE_FILE.read_text(encoding="utf-8"))
+            if cache.get("gerado_em") == today:
+                return cache.get("mensagens", _MARQUEE_FALLBACK)
+        except Exception:
+            pass
+    result = await asyncio.to_thread(_call_openai_sync, _PROMPT_MARQUEE)
+    if result and isinstance(result.get("mensagens"), list):
+        mensagens = [str(m)[:80] for m in result["mensagens"]]
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            MARQUEE_CACHE_FILE.write_text(
+                json.dumps({"gerado_em": today, "mensagens": mensagens}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+        return mensagens
+    return list(_MARQUEE_FALLBACK)
+
+@app.get("/classico/regenerar-conteudo", response_class=HTMLResponse)
+async def classico_regenerar_conteudo(_request: Request):
+    """Apaga o cache de conteudo IA e redireciona para a splash."""
+    for f in [NOTICIAS_CACHE_FILE, MARQUEE_CACHE_FILE]:
+        try:
+            if f.exists():
+                f.unlink()
+        except Exception:
+            pass
+    return RedirectResponse(url="/classico", status_code=303)
+
+@app.get("/classico/portal", response_class=HTMLResponse)
+async def classico_portal(request: Request):
+    """Portal/Home do modo classico — exibido apos clicar em 'Entrar no Site'."""
+    now = datetime.now()
+    hora_atual = now.strftime("%H:%M:%S")
+    data_hoje  = now.strftime("%d/%m/%Y")
+    dia_semana = now.weekday()
+    try:
+        total_arquivos = sum(
+            1 for f in get_classico_base_dir().rglob("*")
+            if f.is_file() and ".cache" not in f.parts
+        )
+    except Exception:
+        total_arquivos = 0
+    visit_count = _get_visit_count()
+    noticias = await _get_noticias_async()
+    mensagens_ia = await _get_marquee_async()
+    marquee_texto = " &#9658; ".join(mensagens_ia)
+    arquivos_recentes = await asyncio.to_thread(
+        _get_arquivos_recentes, get_classico_base_dir()
+    )
+    pensamento = _PENSAMENTOS[dia_semana % len(_PENSAMENTOS)]
+    dica = _DICAS[dia_semana % len(_DICAS)]
+    return templates.TemplateResponse("portal.html", {
+        "request": request,
+        "hora_atual": hora_atual,
+        "data_hoje": data_hoje,
+        "total_arquivos": total_arquivos,
+        "visit_count": visit_count,
+        "noticias": noticias,
+        "marquee_texto": marquee_texto,
+        "arquivos_recentes": arquivos_recentes,
+        "pensamento": pensamento,
+        "dica": dica,
+    })
+
 @app.get("/moderno", response_class=HTMLResponse)
 async def modo_moderno(request: Request):
     """Renderiza a interface moderna em React (SPA)."""
     return templates.TemplateResponse("moderno.html", {"request": request})
 
 @app.get("/classico", response_class=HTMLResponse)
+async def modo_classico_splash(request: Request):
+    """Splash page de entrada do modo classico (anos 2000)."""
+    visit_count = _increment_visit_count()
+    dica = _DICAS[datetime.now().weekday() % len(_DICAS)]
+    return templates.TemplateResponse("splash.html", {
+        "request": request,
+        "visit_count": visit_count,
+        "dica": dica,
+    })
+
+@app.get("/classico/frame", response_class=HTMLResponse)
+async def classico_frame(request: Request):
+    """Frameset da interface classica retro."""
+    return templates.TemplateResponse("classico_frame.html", {"request": request})
+
+@app.get("/classico/topo", response_class=HTMLResponse)
+async def classico_topo(request: Request):
+    """Frame superior: logo, marquee de status e botoes de navegacao."""
+    hora_atual = datetime.now().strftime("%H:%M:%S")
+    try:
+        total_arquivos = sum(
+            1 for f in get_classico_base_dir().rglob("*")
+            if f.is_file() and ".cache" not in f.parts
+        )
+    except Exception:
+        total_arquivos = 0
+    mensagens_ia = await _get_marquee_async()
+    marquee_texto = " &#9658; ".join(mensagens_ia)
+    return templates.TemplateResponse("topo.html", {
+        "request": request,
+        "hora_atual": hora_atual,
+        "total_arquivos": total_arquivos,
+        "marquee_texto": marquee_texto,
+    })
+
+@app.get("/classico/nav", response_class=HTMLResponse)
+async def classico_nav(request: Request):
+    """Frame lateral esquerdo: menu de navegacao vertical."""
+    return templates.TemplateResponse("nav.html", {"request": request})
+
+@app.get("/classico/files", response_class=HTMLResponse)
 async def modo_classico(
     request: Request,
     path: str = Query("", description="Caminho relativo da subpasta"),
     busca: str = Query("", description="Busca por nome (case-insensitive)"),
     ordenar: str = Query("nome", description="Ordenação: nome|tamanho|data"),
     ordem: str = Query("asc", description="Ordem: asc|desc"),
+    pagina: int = Query(1, description="Página atual (1-indexed)"),
 ):
     """Renderiza a interface clássica listando os arquivos disponíveis."""
     files_info: list[dict[str, Any]] = []
@@ -1635,8 +2015,10 @@ async def modo_classico(
     if ordem not in {"asc", "desc"}:
         ordem = "asc"
     is_desc = ordem == "desc"
+    if pagina < 1:
+        pagina = 1
 
-    def build_classico_url(target_path: str, target_ordenar: str, target_ordem: str, target_busca: str | None = None) -> str:
+    def build_classico_url(target_path: str, target_ordenar: str, target_ordem: str, target_busca: str | None = None, target_pagina: int | None = None) -> str:
         params = {
             "path": target_path,
             "ordenar": target_ordenar,
@@ -1646,7 +2028,11 @@ async def modo_classico(
             target_busca = busca
         if target_busca:
             params["busca"] = target_busca
-        return "/classico?" + urlencode(params)
+        # Inclui pagina apenas se > 1 para manter URLs limpas
+        p = target_pagina if target_pagina is not None else pagina
+        if p > 1:
+            params["pagina"] = str(p)
+        return "/classico/files?" + urlencode(params)
 
     try:
         classico_base = get_classico_base_dir()
@@ -1670,10 +2056,11 @@ async def modo_classico(
                 "modified": "-",
                 "is_dir": True,
                 "path": parent_path,
-                "open_url": build_classico_url(parent_path, ordenar, ordem),
+                "open_url": build_classico_url(parent_path, ordenar, ordem, target_pagina=1),
             }
 
         # Lê os arquivos do diretório atual
+        cutoff_24h = datetime.now().timestamp() - 86400.0
         for item in current_dir.iterdir():
             item_rel_path = str(item.relative_to(classico_base)).replace('\\', '/')
             stat = item.stat()
@@ -1687,15 +2074,19 @@ async def modo_classico(
                 "modified_ts": stat.st_mtime,
                 "is_dir": item.is_dir(),
                 "path": item_rel_path,
-                "open_url": build_classico_url(item_rel_path, ordenar, ordem),
+                "open_url": build_classico_url(item_rel_path, ordenar, ordem, target_pagina=1),
                 "download_url": f"/classico/download/{quote(item_rel_path, safe='/')}",
                 "details_url": "/classico/detalhes?" + urlencode({"path": item_rel_path}),
+                "is_new": False,
+                "is_hot": False,
             }
 
             if item.is_file():
                 entry["icon"] = get_file_icon(item.name)
                 entry["size"] = get_file_size_formatted(stat.st_size)
                 entry["size_bytes"] = stat.st_size
+                entry["is_new"] = stat.st_mtime >= cutoff_24h
+                entry["is_hot"] = stat.st_size > 10 * 1024 * 1024
             elif item.is_dir():
                 entry["icon"] = '📁'
 
@@ -1720,11 +2111,20 @@ async def modo_classico(
     if parent_entry and not busca:
         files_info.insert(0, parent_entry)
 
+    # --- Paginação ---
+    total_items = len(files_info)
+    total_paginas = max(1, (total_items + PAGE_SIZE - 1) // PAGE_SIZE)
+    if pagina > total_paginas:
+        pagina = total_paginas
+    start_idx = (pagina - 1) * PAGE_SIZE
+    end_idx = start_idx + PAGE_SIZE
+    files_paginated = files_info[start_idx:end_idx]
+
     def sort_header_url(column: str) -> str:
         next_ordem = "asc"
         if ordenar == column:
             next_ordem = "desc" if ordem == "asc" else "asc"
-        return build_classico_url(rel_path_str, column, next_ordem)
+        return build_classico_url(rel_path_str, column, next_ordem, target_pagina=1)
 
     sort_symbols = {
         "nome": "▲" if ordenar == "nome" and ordem == "asc" else "▼" if ordenar == "nome" else "",
@@ -1732,18 +2132,31 @@ async def modo_classico(
         "data": "▲" if ordenar == "data" and ordem == "asc" else "▼" if ordenar == "data" else "",
     }
 
+    # URLs de paginação
+    pag_anterior_url = build_classico_url(rel_path_str, ordenar, ordem, target_pagina=pagina - 1) if pagina > 1 else ""
+    pag_proxima_url = build_classico_url(rel_path_str, ordenar, ordem, target_pagina=pagina + 1) if pagina < total_paginas else ""
+
+    visit_count = _get_visit_count()
+    noticias = await _get_noticias_async()
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "files": files_info,
+        "files": files_paginated,
         "current_path": rel_path_str,
         "busca": busca,
         "ordenar": ordenar,
         "ordem": ordem,
-        "clear_search_url": "/classico?" + urlencode({"path": rel_path_str, "ordenar": ordenar, "ordem": ordem}),
+        "clear_search_url": "/classico/files?" + urlencode({"path": rel_path_str, "ordenar": ordenar, "ordem": ordem}),
         "sort_nome_url": sort_header_url("nome"),
         "sort_tamanho_url": sort_header_url("tamanho"),
         "sort_data_url": sort_header_url("data"),
         "sort_symbols": sort_symbols,
+        "pagina": pagina,
+        "total_paginas": total_paginas,
+        "total_items": total_items,
+        "pag_anterior_url": pag_anterior_url,
+        "pag_proxima_url": pag_proxima_url,
+        "visit_count": visit_count,
+        "noticias": noticias,
     })
 
 @app.get("/classico/notas", response_class=HTMLResponse)
@@ -1796,7 +2209,425 @@ async def classico_detalhes(request: Request, path: str = Query(..., description
         "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%d/%m/%Y %H:%M:%S"),
         "extension": file_path.suffix.lower().lstrip(".") or "(sem extensão)",
         "download_url": f"/classico/download/{quote(rel_path, safe='/')}",
-        "back_url": "/classico?" + urlencode({"path": parent_path}),
+        "back_url": "/classico/files?" + urlencode({"path": parent_path}),
+    })
+
+# Extensões exibíveis nativamente por browsers antigos (IE5/K-Meleon)
+GALLERY_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+
+def _list_gallery_images(directory: Path, base: Path) -> list[dict]:
+    """Retorna lista ordenada de imagens (apenas GALLERY_EXTS) dentro de directory."""
+    images = []
+    for item in sorted(directory.iterdir(), key=lambda x: x.name.lower()):
+        if item.is_file() and item.suffix.lower() in GALLERY_EXTS:
+            rel = item.relative_to(base).as_posix()
+            stat = item.stat()
+            images.append({
+                "name": item.name,
+                "path": rel,
+                "size": get_file_size_formatted(stat.st_size),
+                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%d/%m/%Y"),
+                "thumbnail_url": "/api/thumbnail?path=" + quote(rel, safe=""),
+                "download_url": "/classico/download/" + quote(rel, safe="/"),
+                "viewer_url": "/classico/galeria/ver?" + urlencode({"arquivo": rel}),
+            })
+    return images
+
+@app.get("/classico/galeria", response_class=HTMLResponse)
+async def classico_galeria(
+    request: Request,
+    pasta: str = Query("", description="Pasta relativa dentro da biblioteca clássica"),
+    pagina: int = Query(1, description="Página atual"),
+):
+    """Galeria de fotos do modo clássico (estética anos 2000)."""
+    classico_base = get_classico_base_dir()
+    current_dir = get_safe_path(pasta, classico_base)
+    if not current_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+
+    rel_pasta = current_dir.relative_to(classico_base).as_posix()
+    if rel_pasta == ".":
+        rel_pasta = ""
+
+    # Subpastas (apenas as que existem — sem filtrar por conteúdo para não ser lento)
+    subdirs = []
+    for item in sorted(current_dir.iterdir(), key=lambda x: x.name.lower()):
+        if item.is_dir() and not item.name.startswith("."):
+            rel_sub = item.relative_to(classico_base).as_posix()
+            subdirs.append({
+                "name": item.name,
+                "url": "/classico/galeria?" + urlencode({"pasta": rel_sub}),
+            })
+
+    # Imagens paginadas
+    all_images = _list_gallery_images(current_dir, classico_base)
+    total_images = len(all_images)
+    if pagina < 1:
+        pagina = 1
+    total_paginas = max(1, (total_images + PAGE_SIZE - 1) // PAGE_SIZE)
+    if pagina > total_paginas:
+        pagina = total_paginas
+    start = (pagina - 1) * PAGE_SIZE
+    end = start + PAGE_SIZE
+    images_pag = all_images[start:end]
+
+    # Enriquece com viewer_url completo (pasta + pagina para voltar)
+    for img in images_pag:
+        img["viewer_url"] = "/classico/galeria/ver?" + urlencode({
+            "arquivo": img["path"],
+            "pasta": rel_pasta,
+            "pagina": pagina,
+        })
+
+    has_parent = bool(rel_pasta)
+    parent_url = ""
+    if has_parent:
+        parent_dir = current_dir.parent
+        parent_rel = parent_dir.relative_to(classico_base).as_posix()
+        if parent_rel == ".":
+            parent_rel = ""
+        parent_url = "/classico/galeria?" + urlencode({"pasta": parent_rel})
+
+    pag_ant = "/classico/galeria?" + urlencode({"pasta": rel_pasta, "pagina": pagina - 1}) if pagina > 1 else ""
+    pag_prox = "/classico/galeria?" + urlencode({"pasta": rel_pasta, "pagina": pagina + 1}) if pagina < total_paginas else ""
+
+    return templates.TemplateResponse("galeria.html", {
+        "request": request,
+        "images": images_pag,
+        "subdirs": subdirs,
+        "pasta": rel_pasta,
+        "pagina": pagina,
+        "total_paginas": total_paginas,
+        "total_images": total_images,
+        "start_idx": start + 1,
+        "end_idx": min(end, total_images),
+        "has_parent": has_parent,
+        "parent_url": parent_url,
+        "pag_ant": pag_ant,
+        "pag_prox": pag_prox,
+    })
+
+@app.get("/classico/galeria/ver", response_class=HTMLResponse)
+async def classico_galeria_ver(
+    request: Request,
+    arquivo: str = Query(..., description="Caminho relativo da imagem"),
+    pasta: str = Query("", description="Pasta da galeria para voltar"),
+    pagina: int = Query(1, description="Página da galeria para voltar"),
+):
+    """Visualizador de foto individual — aberto em janela popup."""
+    classico_base = get_classico_base_dir()
+    file_path = get_safe_path(arquivo, classico_base)
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Imagem não encontrada")
+    if file_path.suffix.lower() not in GALLERY_EXTS:
+        raise HTTPException(status_code=400, detail="Formato não suportado para visualização")
+
+    stat = file_path.stat()
+
+    # Prev/Next dentro da mesma pasta
+    all_images = _list_gallery_images(file_path.parent, classico_base)
+    rel_paths = [img["path"] for img in all_images]
+    try:
+        idx = rel_paths.index(arquivo)
+    except ValueError:
+        idx = 0
+
+    def _ver_url(arq: str) -> str:
+        return "/classico/galeria/ver?" + urlencode({"arquivo": arq, "pasta": pasta, "pagina": pagina})
+
+    prev_url = _ver_url(rel_paths[idx - 1]) if idx > 0 else ""
+    next_url = _ver_url(rel_paths[idx + 1]) if idx < len(rel_paths) - 1 else ""
+
+    return templates.TemplateResponse("galeria_ver.html", {
+        "request": request,
+        "name": file_path.name,
+        "size": get_file_size_formatted(stat.st_size),
+        "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%d/%m/%Y %H:%M"),
+        "imagem_url": "/classico/galeria/imagem?" + urlencode({"arquivo": arquivo}),
+        "download_url": "/classico/download/" + quote(arquivo, safe="/"),
+        "back_url": "/classico/galeria?" + urlencode({"pasta": pasta, "pagina": pagina}),
+        "prev_url": prev_url,
+        "next_url": next_url,
+        "foto_num": idx + 1,
+        "total_fotos": len(all_images),
+    })
+
+@app.get("/classico/galeria/imagem")
+async def classico_galeria_imagem(arquivo: str = Query(..., description="Caminho relativo da imagem")):
+    """Serve a imagem inline (sem forçar download) para o visualizador."""
+    classico_base = get_classico_base_dir()
+    file_path = get_safe_path(arquivo, classico_base)
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Imagem não encontrada")
+    if file_path.suffix.lower() not in GALLERY_EXTS:
+        raise HTTPException(status_code=400, detail="Formato não suportado")
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(path=file_path, media_type=content_type or "image/jpeg")
+
+# ---------------------------------------------------------------------------
+# Mural de Recados
+# ---------------------------------------------------------------------------
+
+def _strip_html(text: str) -> str:
+    """Remove tags HTML para prevenir XSS básico."""
+    return re.sub(r'<[^>]+>', '', text)
+
+def _load_mural() -> list[dict]:
+    if not MURAL_FILE.exists():
+        return []
+    try:
+        data = json.loads(MURAL_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return data
+    except Exception:
+        pass
+    return []
+
+def _save_mural(entries: list[dict]) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    MURAL_FILE.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+
+@app.get("/classico/mural", response_class=HTMLResponse)
+async def classico_mural(
+    request: Request,
+    pagina: int = Query(1, description="Página atual"),
+    erro: str = Query("", description="Mensagem de erro de validação"),
+):
+    """Mural de recados do modo clássico."""
+    entries = list(reversed(_load_mural()))  # mais recentes primeiro
+    total = len(entries)
+    if pagina < 1:
+        pagina = 1
+    total_paginas = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    if pagina > total_paginas:
+        pagina = total_paginas
+    start = (pagina - 1) * PAGE_SIZE
+    page_entries = entries[start:start + PAGE_SIZE]
+
+    return templates.TemplateResponse("mural.html", {
+        "request": request,
+        "entries": page_entries,
+        "pagina": pagina,
+        "total_paginas": total_paginas,
+        "total": total,
+        "start_idx": start + 1,
+        "end_idx": min(start + PAGE_SIZE, total),
+        "pag_ant": f"/classico/mural?pagina={pagina - 1}" if pagina > 1 else "",
+        "pag_prox": f"/classico/mural?pagina={pagina + 1}" if pagina < total_paginas else "",
+        "erro": erro,
+    })
+
+@app.post("/classico/mural")
+async def classico_mural_post(
+    apelido: str = Form(""),
+    mensagem: str = Form(""),
+):
+    """Salva novo recado no mural."""
+    apelido  = _strip_html(apelido.strip())[:20]
+    mensagem = _strip_html(mensagem.strip())[:200]
+
+    if not apelido or not mensagem:
+        return RedirectResponse(
+            url="/classico/mural?" + urlencode({"erro": "Apelido e mensagem sao obrigatorios."}),
+            status_code=303,
+        )
+
+    entries = _load_mural()
+    entries.append({
+        "apelido": apelido,
+        "mensagem": mensagem,
+        "data": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    })
+    if len(entries) > MURAL_MAX:
+        entries = entries[-MURAL_MAX:]
+    _save_mural(entries)
+    return RedirectResponse(url="/classico/mural", status_code=303)
+
+# ---------------------------------------------------------------------------
+# Página Sobre
+# ---------------------------------------------------------------------------
+
+def _load_sobre() -> str:
+    if not SOBRE_FILE.exists():
+        return _SOBRE_DEFAULT
+    try:
+        return SOBRE_FILE.read_text(encoding="utf-8")
+    except Exception:
+        return _SOBRE_DEFAULT
+
+def _save_sobre(conteudo: str) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    SOBRE_FILE.write_text(conteudo, encoding="utf-8")
+
+@app.get("/classico/sobre", response_class=HTMLResponse)
+async def classico_sobre(
+    request: Request,
+    editar: int = Query(0, description="1 = modo edição"),
+):
+    """Página sobre o servidor — visualização e edição."""
+    import sys
+    import platform as _platform
+    conteudo = _load_sobre()
+    classico_base = get_classico_base_dir()
+    try:
+        usage = shutil.disk_usage(str(classico_base))
+        disk_usado = get_file_size_formatted(usage.used)
+        disk_total = get_file_size_formatted(usage.total)
+        disk_livre = get_file_size_formatted(usage.free)
+    except Exception:
+        disk_usado = disk_total = disk_livre = "N/D"
+
+    return templates.TemplateResponse("sobre.html", {
+        "request": request,
+        "conteudo": conteudo,
+        "editar": bool(editar),
+        "python_version": sys.version.split()[0],
+        "os_info": _platform.system() + " " + _platform.release(),
+        "disk_usado": disk_usado,
+        "disk_total": disk_total,
+        "disk_livre": disk_livre,
+    })
+
+@app.post("/classico/sobre")
+async def classico_sobre_post(conteudo: str = Form("")):
+    """Salva o conteúdo do sobre.txt."""
+    _save_sobre(conteudo)
+    return RedirectResponse(url="/classico/sobre", status_code=303)
+
+# ---------------------------------------------------------------------------
+# Player de Músicas
+# ---------------------------------------------------------------------------
+
+@app.get("/classico/musicas", response_class=HTMLResponse)
+async def classico_musicas(
+    request: Request,
+    pagina: int = Query(1, description="Página atual"),
+):
+    """Lista e player de músicas (.mp3/.ogg) do modo clássico."""
+    classico_base = get_classico_base_dir()
+    all_tracks: list[dict] = []
+
+    for root, dirs, files in os.walk(str(classico_base)):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        root_path = Path(root)
+        for fname in sorted(files):
+            if Path(fname).suffix.lower() in MUSIC_EXTS:
+                fpath = root_path / fname
+                try:
+                    rel = fpath.relative_to(classico_base).as_posix()
+                    stat = fpath.stat()
+                    pasta = root_path.relative_to(classico_base).as_posix()
+                    all_tracks.append({
+                        "name": fname,
+                        "path": rel,
+                        "pasta": pasta if pasta != '.' else '(raiz)',
+                        "size": get_file_size_formatted(stat.st_size),
+                        "download_url": "/classico/download/" + quote(rel, safe="/"),
+                    })
+                except Exception:
+                    continue
+
+    all_tracks.sort(key=lambda x: x['name'].lower())
+    total = len(all_tracks)
+    if pagina < 1:
+        pagina = 1
+    total_paginas = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    if pagina > total_paginas:
+        pagina = total_paginas
+    start = (pagina - 1) * PAGE_SIZE
+    tracks_pag = all_tracks[start:start + PAGE_SIZE]
+    for i, t in enumerate(tracks_pag):
+        t['idx'] = start + i
+
+    return templates.TemplateResponse("musicas.html", {
+        "request": request,
+        "tracks": tracks_pag,
+        "total": total,
+        "pagina": pagina,
+        "total_paginas": total_paginas,
+        "start_idx": start + 1,
+        "end_idx": min(start + PAGE_SIZE, total),
+        "pag_ant":  f"/classico/musicas?pagina={pagina - 1}" if pagina > 1 else "",
+        "pag_prox": f"/classico/musicas?pagina={pagina + 1}" if pagina < total_paginas else "",
+    })
+
+# ---------------------------------------------------------------------------
+# Status do Servidor
+# ---------------------------------------------------------------------------
+
+@app.get("/classico/status", response_class=HTMLResponse)
+async def classico_status(request: Request):
+    """Painel de controle com métricas do servidor."""
+    classico_base = get_classico_base_dir()
+
+    # Disco
+    try:
+        usage = shutil.disk_usage(str(classico_base))
+        disk_total  = f"{usage.total  / 1048576:.1f} MB"
+        disk_usado  = f"{usage.used   / 1048576:.1f} MB"
+        disk_livre  = f"{usage.free   / 1048576:.1f} MB"
+        disk_pct    = int(usage.used * 100 / usage.total) if usage.total > 0 else 0
+        disk_bar_color = "#880000" if disk_pct >= 90 else "#884400" if disk_pct >= 70 else "#553300"
+    except Exception:
+        disk_total = disk_usado = disk_livre = "N/D"
+        disk_pct = 0
+        disk_bar_color = "#553300"
+
+    # Contagem de arquivos
+    total_files = total_images = total_musicas = 0
+    try:
+        for root, dirs, files in os.walk(str(classico_base)):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for f in files:
+                ext = Path(f).suffix.lower()
+                total_files += 1
+                if ext in IMAGE_EXTENSIONS:
+                    total_images += 1
+                if ext in MUSIC_EXTS:
+                    total_musicas += 1
+    except Exception:
+        pass
+
+    # Jobs ativos
+    with backup_jobs_lock:
+        backup_ativos = sum(1 for j in backup_jobs.values() if j.get('status') == 'em_andamento')
+    conv_ativos = sum(1 for j in conversion_jobs.values() if j.get('status') == 'em_andamento')
+    jobs_ativos = backup_ativos + conv_ativos
+
+    # Último backup
+    ultimo_backup = "Nunca"
+    try:
+        newest: float = 0.0
+        for f in BACKUPS_DIR.rglob("*"):
+            if f.is_file() and f.stat().st_mtime > newest:
+                newest = f.stat().st_mtime
+        if newest > 0:
+            ultimo_backup = datetime.fromtimestamp(newest).strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        pass
+
+    # Cache de thumbnails
+    thumb_bytes: int = 0
+    try:
+        thumb_bytes = sum(f.stat().st_size for f in THUMBNAILS_DIR.rglob("*") if f.is_file())
+    except Exception:
+        pass
+
+    return templates.TemplateResponse("status.html", {
+        "request": request,
+        "disk_total": disk_total,
+        "disk_usado": disk_usado,
+        "disk_livre": disk_livre,
+        "disk_pct":   disk_pct,
+        "disk_bar_color": disk_bar_color,
+        "total_files":   total_files,
+        "total_images":  total_images,
+        "total_musicas": total_musicas,
+        "jobs_ativos":   jobs_ativos,
+        "ultimo_backup": ultimo_backup,
+        "thumb_cache":   get_file_size_formatted(thumb_bytes),
+        "visit_count":   _get_visit_count(),
+        "hora_atual":    datetime.now().strftime("%H:%M:%S"),
     })
 
 def iterfile(file_path: Path):
@@ -1892,7 +2723,7 @@ async def upload_file(
         </script>
     </head>
     <body style="font-family: Tahoma, Arial; font-size: 12px; background-color: #c0c0c0;">
-        Upload de "%s" concluído! <a href="/classico?path=%s" target="_parent">Voltar</a>
+        Upload de "%s" concluido! <a href="/classico/files?path=%s" target="_parent">Voltar</a>
     </body>
     </html>
     """ % (file.filename, path)

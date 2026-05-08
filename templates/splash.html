@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink v1.0 - Bem-vindo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 10px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+<script type="text/javascript">
+<!--
+var blinkOn = true;
+function piscarTag() {
+    var el = document.getElementById("tagOnline");
+    if (el) {
+        el.style.visibility = blinkOn ? "visible" : "hidden";
+        blinkOn = !blinkOn;
+    }
+}
+if (typeof setInterval != "undefined") {
+    setInterval(piscarTag, 600);
+}
+//-->
+</script>
+</head>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff" alink="#ff4444">
+
+<br>
+
+<table width="580" border="0" cellpadding="0" cellspacing="0" align="center">
+  <tr>
+    <td>
+
+      <!-- Cabecalho Principal -->
+      <table width="100%" border="3" cellpadding="0" cellspacing="0" bordercolor="#4444cc">
+        <tr>
+          <td bgcolor="#000033" align="center">
+            <table width="100%" border="0" cellpadding="12" cellspacing="0">
+              <tr>
+                <td align="center">
+                  <font face="Tahoma" size="7" color="#ffff00">
+                    <b>&#9670; RetroLink v1.0 &#9670;</b>
+                  </font>
+                  <br>
+                  <font face="Verdana" size="2" color="#aaaaff">
+                    Seu servidor de arquivos pessoal
+                  </font>
+                  &nbsp;&nbsp;&nbsp;
+                  <span id="tagOnline" style="visibility: visible;">
+                    <font face="Arial" size="2" color="#ff4444"><b>[ONLINE]</b></font>
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Botoes de Entrada -->
+      <table width="100%" border="2" cellpadding="10" cellspacing="0" bordercolor="#4444aa" bgcolor="#000044">
+        <tr>
+          <td align="center">
+            <table border="0" cellpadding="0" cellspacing="12">
+              <tr>
+                <td align="center">
+                  <a href="/classico/portal" target="_top">
+                    <button style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 13px; cursor: pointer; padding: 10px 22px; width: 170px;" onmouseover="window.status='Entrar no site'; return true;" onmouseout="window.status=''; return true;">
+                      &gt;&gt; Entrar no Site
+                    </button>
+                  </a>
+                </td>
+                <td align="center">
+                  <a href="/classico/frame" target="_top">
+                    <button style="border: 2px outset #8888ff; background-color: #000055; color: #ffffff; font-family: Tahoma; font-size: 13px; cursor: pointer; padding: 10px 22px; width: 170px;" onmouseover="window.status='Ver galeria de arquivos'; return true;" onmouseout="window.status=''; return true;">
+                      [&gt;&gt;] Ver Galeria
+                    </button>
+                  </a>
+                </td>
+                <td align="center">
+                  <a href="/docs" target="_blank">
+                    <button style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 13px; cursor: pointer; padding: 10px 22px; width: 170px;" onmouseover="window.status='Status e API do servidor'; return true;" onmouseout="window.status=''; return true;">
+                      [i] Status do Servidor
+                    </button>
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Contador de Visitas -->
+      <table width="100%" border="1" cellpadding="6" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td bgcolor="#000044" align="center">
+            <font face="Tahoma" size="2" color="#ffff00">
+              <b>Voce e o visitante numero:</b>
+            </font>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" bgcolor="#000022">
+            <font face="Courier New, Courier" size="5" color="#00ff44">
+              <b>[ {{ "%06d"|format(visit_count) }} ]</b>
+            </font>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Informacoes do Site -->
+      <table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td bgcolor="#000044">
+            <font face="Tahoma" size="2" color="#ffff00"><b>&#9658; Sobre o RetroLink</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#000033">
+            <font face="Verdana" size="2" color="#ccccff">
+              Servidor hibrido de arquivos para rede local.<br>
+              Compativel com <b>Windows XP</b> e navegadores Gecko antigos.<br>
+              Acesse pelo modo classico (este) ou pelo
+              <a href="/moderno" target="_blank">Modo Moderno</a>.
+            </font>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Rodape com Marquee -->
+      <table width="100%" border="1" cellpadding="4" cellspacing="0" bordercolor="#333399" bgcolor="#000022">
+        <tr>
+          <td>
+            <marquee behavior="scroll" direction="left" scrollamount="2" scrolldelay="40" bgcolor="#000022">
+              <font face="Tahoma" size="2" color="#aaaaff">
+                &#9658; DICA DO DIA: {{ dica }} &#9658;
+              </font>
+            </marquee>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" bgcolor="#000011">
+            <font face="Verdana" size="1" color="#555577">
+              Melhor visualizado em 800x600 &nbsp;|&nbsp;
+              Internet Explorer 5+ ou K-Meleon &nbsp;|&nbsp;
+              RetroLink &copy; 2000-{{ "2025" }}
+              &nbsp;|&nbsp;
+              <a href="/classico/regenerar-conteudo" style="color: #333355;">[atualizar conteudo]</a>
+            </font>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

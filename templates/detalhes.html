@@ -1,136 +1,94 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>RetroLink - Detalhes do Arquivo</title>
-    <style>
-        body {
-            font-family: Tahoma, Arial, sans-serif;
-            background-color: #004e98;
-            color: #000;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            background-color: #c0c0c0;
-            border: 2px outset #ffffff;
-            width: 760px;
-            margin: 0 auto;
-            padding: 15px;
-        }
-
-        .header {
-            background-color: #000080;
-            color: #fff;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 2px inset #ffffff;
-            text-align: center;
-        }
-
-        .icon-box {
-            text-align: center;
-            font-size: 72px;
-            margin-bottom: 10px;
-        }
-
-        .panel {
-            background-color: #e0e0e0;
-            border: 2px inset #ffffff;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #fff;
-            border: 1px solid #808080;
-        }
-
-        th {
-            width: 170px;
-            text-align: left;
-            background-color: #d4d0c8;
-            border: 1px outset #ffffff;
-            padding: 6px;
-            font-weight: normal;
-        }
-
-        td {
-            border-bottom: 1px solid #e0e0e0;
-            padding: 6px;
-        }
-
-        .btn {
-            background-color: #d4d0c8;
-            border: 2px outset #ffffff;
-            padding: 7px 14px;
-            font-family: Tahoma, Arial, sans-serif;
-            font-size: 13px;
-            color: #000;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn:active {
-            border-style: inset;
-            background-color: #c0c0c0;
-        }
-
-        .download-btn {
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px 18px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 10px;
-        }
-    </style>
+<title>RetroLink - Detalhes do Arquivo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 8px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1 style="margin: 0;">📄 Detalhes do Arquivo</h1>
-        </div>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
 
-        <div class="icon-box">{{ icon }}</div>
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>&#9660; Detalhes do Arquivo &#9660;</b></font>
+    </td>
+  </tr>
+</table>
 
-        <div class="panel">
-            <table>
-                <tr>
-                    <th>Nome</th>
-                    <td>{{ name }}</td>
-                </tr>
-                <tr>
-                    <th>Caminho Relativo</th>
-                    <td>{{ relative_path }}</td>
-                </tr>
-                <tr>
-                    <th>Tamanho</th>
-                    <td>{{ size }}</td>
-                </tr>
-                <tr>
-                    <th>Data de Modificação</th>
-                    <td>{{ modified }}</td>
-                </tr>
-                <tr>
-                    <th>Extensão</th>
-                    <td>{{ extension }}</td>
-                </tr>
-            </table>
-        </div>
+<br>
 
-        <div style="text-align: center; margin-bottom: 10px;">
-            <a href="{{ download_url }}" class="btn download-btn">⬇️ Baixar Arquivo</a>
-        </div>
+<table width="100%" border="1" cellpadding="6" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td bgcolor="#000044" width="140">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Nome:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2"><b>{{ name }}</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Tipo:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2">.{{ extension }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Tamanho:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2">{{ size }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Modificado:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2">{{ modified }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Caminho:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Courier New" size="1" color="#aaaaff">{{ relative_path }}</font>
+    </td>
+  </tr>
+</table>
 
-        <div class="footer">
-            <a href="{{ back_url }}" class="btn">← Voltar</a>
-        </div>
-    </div>
+<br>
+
+<table border="0" cellpadding="0" cellspacing="6">
+  <tr>
+    <td>
+      <a href="{{ download_url }}" style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 12px; padding: 5px 14px; text-decoration: none; font-weight: bold;">[v] Baixar Arquivo</a>
+    </td>
+    <td>
+      <a href="{{ back_url }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 12px; padding: 5px 14px; text-decoration: none;">[&lt;] Voltar</a>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Melhor visualizado em 800x600 &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
+
 </body>
 </html>

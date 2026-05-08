@@ -1,0 +1,332 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink v1.0 - Portal</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 4px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+td { font-family: Tahoma, Arial, sans-serif; font-size: 12px; }
+</style>
+<script type="text/javascript">
+<!--
+var blinkOn = true;
+function piscarOnline() {
+    var el = document.getElementById("tagOnline");
+    if (el) { el.style.visibility = blinkOn ? "visible" : "hidden"; }
+    blinkOn = !blinkOn;
+}
+function piscarHot() {
+    var els = document.getElementsByName("hot_tag");
+    var i;
+    for (i = 0; i < els.length; i++) {
+        els[i].style.visibility = blinkOn ? "visible" : "hidden";
+    }
+}
+if (typeof setInterval != "undefined") {
+    setInterval(piscarOnline, 600);
+    setInterval(piscarHot, 700);
+}
+//-->
+</script>
+</head>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff" alink="#ff4444">
+
+<!-- LAYOUT PRINCIPAL: sidebar (150px) | conteudo -->
+<table width="100%" border="0" cellpadding="0" cellspacing="4">
+  <tr valign="top">
+
+    <!-- ===================== SIDEBAR ESQUERDA 150px ===================== -->
+    <td width="150" valign="top">
+
+      <!-- Logo -->
+      <table width="150" border="2" cellpadding="4" cellspacing="0" bordercolor="#4444ff" bgcolor="#000033">
+        <tr>
+          <td align="center">
+            <font face="Tahoma" size="3" color="#ffff00"><b>&#9670; RetroLink</b></font><br>
+            <font face="Verdana" size="1" color="#6666cc">v1.0</font>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Menu de navegacao -->
+      <table width="150" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+        <tr>
+          <td bgcolor="#000044">
+            <font face="Tahoma" size="2" color="#ffff00"><b>&#9658; MENU</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <font face="Tahoma" size="2">
+              <a href="/classico/frame">[ &gt;&gt; ] Arquivos</a><br>
+              <a href="/classico/galeria">[ &gt;&gt; ] Galeria</a><br>
+              <a href="/classico/notas">[ &gt;&gt; ] Notas</a><br>
+              <a href="/classico/mural">[ &gt;&gt; ] Mural</a><br>
+              <a href="/classico/musicas">[ &gt;&gt; ] Musicas</a><br>
+              <a href="/classico/sobre">[ &gt;&gt; ] Sobre</a><br>
+              <a href="/classico/status">[ &gt;&gt; ] Status</a><br>
+              <br>
+              <a href="/moderno" target="_blank">[ ** ] Modo Moderno</a>
+            </font>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Box Servidor -->
+      <table width="150" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+        <tr>
+          <td bgcolor="#000044" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>[ SERVIDOR ]</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" bgcolor="#000011">
+            <span id="tagOnline" style="visibility:visible;">
+              <font face="Tahoma" size="2" color="#00ff44"><b>ONLINE</b></font>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <font face="Tahoma" size="1" color="#aaaaff">
+              Hora: <b>{{ hora_atual }}</b><br>
+              Arquivos: <b>{{ total_arquivos }}</b>
+            </font>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Box Visitantes -->
+      <table width="150" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+        <tr>
+          <td bgcolor="#000044" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>[ VISITANTES ]</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" bgcolor="#000011">
+            <font face="Courier New, Courier" size="3" color="#00ff44">
+              <b>[ {{ "%06d"|format(visit_count) }} ]</b>
+            </font>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Box Hoje -->
+      <table width="150" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+        <tr>
+          <td bgcolor="#000044" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>[ HOJE ]</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#000011">
+            <font face="Tahoma" size="1" color="#aaaaff">{{ data_hoje }}</font>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#000022">
+            <font face="Verdana" size="1" color="#cccccc"><i>{{ pensamento }}</i></font>
+          </td>
+        </tr>
+      </table>
+
+    </td><!-- fim sidebar esquerda -->
+
+    <!-- ===================== COLUNA DIREITA ===================== -->
+    <td valign="top">
+
+      <!-- Marquee no topo da coluna direita -->
+      <table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#4444aa" bgcolor="#000011">
+        <tr>
+          <td>
+            <marquee behavior="scroll" direction="left" scrollamount="2" scrolldelay="35" bgcolor="#000011">
+              <font face="Tahoma" size="2" color="#00ff44">
+                &#9658; RetroLink ONLINE &#9658;&nbsp;
+                Hora: <b>{{ hora_atual }}</b> &#9658;&nbsp;
+                {{ marquee_texto }}
+              </font>
+            </marquee>
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      <!-- Layout interno: noticias (flex) | barra lateral direita (200px) -->
+      <table width="100%" border="0" cellpadding="0" cellspacing="6">
+        <tr valign="top">
+
+          <!-- SUB-COLUNA CENTRAL: noticias -->
+          <td valign="top">
+
+            <table width="100%" border="2" cellpadding="0" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+              <tr>
+                <td bgcolor="#000044" align="center">
+                  <font face="Tahoma" size="3" color="#ffff00"><b>&#9660; NOTICIAS: GameWorld BR &#9660;</b></font>
+                  &nbsp;&nbsp;
+                  <font face="Tahoma" size="1" color="#666699">[atualizado semanalmente via IA]</font>
+                </td>
+              </tr>
+              {% if noticias %}
+              {% for n in noticias %}
+              <tr>
+                <td bgcolor="{% if loop.index0 % 2 == 0 %}#000033{% else %}#000022{% endif %}" style="padding: 7px;">
+                  <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td>
+                        {% if loop.first and n.tipo == 'games' %}
+                          <font face="Tahoma" size="1" color="#ffff00"><b>[NEW]</b></font>&nbsp;
+                        {% endif %}
+                        {% if n.tipo == 'musa' %}
+                          <font face="Tahoma" size="1" color="#ff8800" name="hot_tag"><b>[HOT]</b></font>&nbsp;
+                          <font face="Tahoma" size="2" color="#ff88aa"><b>{{ n.titulo }}</b></font>
+                        {% else %}
+                          <font face="Tahoma" size="2" color="#ffff00"><b>{{ n.titulo }}</b></font>
+                        {% endif %}
+                      </td>
+                      <td align="right" width="200" nowrap>
+                        <font face="Tahoma" size="1" color="#888888">{{ n.fonte }} &mdash; {{ n.data }}</font>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="2">
+                        <font face="Verdana" size="2" color="#cccccc">{{ n.corpo }}</font>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              {% endfor %}
+              {% else %}
+              <tr>
+                <td align="center" bgcolor="#000022" style="padding:10px;">
+                  <font face="Tahoma" size="2" color="#888888"><i>Sem noticias. <a href="/classico/regenerar-conteudo">[gerar agora]</a></i></font>
+                </td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td bgcolor="#000011" align="right" style="padding: 3px 6px;">
+                  <font face="Verdana" size="1" color="#444466">
+                    <a href="/classico/regenerar-conteudo" style="color: #333355;">[atualizar conteudo]</a>
+                  </font>
+                </td>
+              </tr>
+            </table>
+
+          </td><!-- fim sub-coluna central -->
+
+          <!-- SUB-COLUNA LATERAL DIREITA: 200px -->
+          <td width="200" valign="top">
+
+            <!-- Box Arquivos Recentes -->
+            <table width="200" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+              <tr>
+                <td bgcolor="#000044" align="center">
+                  <font face="Tahoma" size="2" color="#ffff00"><b>[ ARQUIVOS RECENTES ]</b></font>
+                </td>
+              </tr>
+              {% if arquivos_recentes %}
+              {% for f in arquivos_recentes %}
+              <tr>
+                <td bgcolor="{% if loop.index0 % 2 == 0 %}#000022{% else %}#000011{% endif %}" style="padding: 3px;">
+                  <font face="Tahoma" size="1" color="#aaaaff">{{ f.icone }}</font>&nbsp;
+                  <a href="/classico/download/{{ f.rel }}" style="font-family: Tahoma; font-size: 11px; color: #ffff00;">
+                    {% if f.nome|length > 18 %}{{ f.nome[:15] }}...{% else %}{{ f.nome }}{% endif %}
+                  </a><br>
+                  <font face="Verdana" size="1" color="#888888">{{ f.tamanho }} &nbsp; {{ f.data }}</font>
+                </td>
+              </tr>
+              {% endfor %}
+              {% else %}
+              <tr>
+                <td align="center" bgcolor="#000011">
+                  <font face="Verdana" size="1" color="#666666"><i>Nenhum arquivo</i></font>
+                </td>
+              </tr>
+              {% endif %}
+            </table>
+
+            <br>
+
+            <!-- Box Dica do Dia -->
+            <table width="200" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+              <tr>
+                <td bgcolor="#000044" align="center">
+                  <font face="Tahoma" size="2" color="#ffff00"><b>[ DICA DO DIA ]</b></font>
+                </td>
+              </tr>
+              <tr>
+                <td bgcolor="#000011">
+                  <font face="Verdana" size="1" color="#aaccff">{{ dica }}</font>
+                </td>
+              </tr>
+            </table>
+
+            <br>
+
+            <!-- Box Acesso Rapido -->
+            <table width="200" border="2" cellpadding="3" cellspacing="0" bordercolor="#4444ff" bgcolor="#000022">
+              <tr>
+                <td bgcolor="#000044" align="center">
+                  <font face="Tahoma" size="2" color="#ffff00"><b>[ ACESSO RAPIDO ]</b></font>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" bgcolor="#000011" style="padding: 6px;">
+                  <a href="/classico/frame">
+                    <button style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 4px 10px; width: 160px; margin: 2px;" onmouseover="window.status='Gerenciador de Arquivos'; return true;" onmouseout="window.status=''; return true;">
+                      [D] Gerenciador de Arqs.
+                    </button>
+                  </a><br>
+                  <a href="/classico/galeria">
+                    <button style="border: 2px outset #8888ff; background-color: #000055; color: #ffffff; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 4px 10px; width: 160px; margin: 2px;" onmouseover="window.status='Galeria de Fotos'; return true;" onmouseout="window.status=''; return true;">
+                      [I] Galeria de Fotos
+                    </button>
+                  </a><br>
+                  <a href="/classico/status">
+                    <button style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 4px 10px; width: 160px; margin: 2px;" onmouseover="window.status='Status do Servidor'; return true;" onmouseout="window.status=''; return true;">
+                      [i] Status do Servidor
+                    </button>
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+          </td><!-- fim sub-coluna lateral direita -->
+
+        </tr>
+      </table><!-- fim layout interno -->
+
+    </td><!-- fim coluna direita -->
+
+  </tr>
+</table><!-- fim layout principal -->
+
+<br>
+
+<!-- Rodape -->
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        <a href="/classico" style="color: #333355;">[^] Voltar ao Inicio</a>
+        &nbsp;|&nbsp; RetroLink v1.0 &nbsp;|&nbsp; Internet Explorer 5+ / K-Meleon
+      </font>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

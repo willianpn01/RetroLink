@@ -1,0 +1,95 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink - Topo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000044; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 11px; margin: 0; padding: 0; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+<script type="text/javascript">
+<!--
+var blinkOn = true;
+function piscarOnline() {
+    var el = document.getElementById("indicadorOnline");
+    if (el) {
+        el.style.visibility = blinkOn ? "visible" : "hidden";
+        blinkOn = !blinkOn;
+    }
+}
+if (typeof setInterval != "undefined") {
+    setInterval(piscarOnline, 700);
+}
+//-->
+</script>
+</head>
+<body>
+<table width="100%" border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td bgcolor="#000033" width="190" valign="middle">
+      <table border="0" cellpadding="4" cellspacing="0" width="100%">
+        <tr>
+          <td>
+            <font face="Tahoma" size="5" color="#ffff00"><b>&#9670; RetroLink</b></font><br>
+            <font face="Verdana" size="1" color="#8888ff">&nbsp;v1.0 // Servidor Pessoal</font>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td bgcolor="#000055" valign="middle">
+      <marquee behavior="scroll" direction="left" scrollamount="2" scrolldelay="35" width="100%">
+        <font face="Tahoma" size="2" color="#00ff44">
+          &#9658; Servidor ONLINE &#9658;&nbsp;
+          Hora: <b>{{ hora_atual }}</b> &#9658;&nbsp;
+          <b>{{ total_arquivos }}</b> arquivo(s) &#9658;&nbsp;
+          {{ marquee_texto }}
+        </font>
+      </marquee>
+    </td>
+    <td bgcolor="#000033" width="90" align="center" valign="middle">
+      <font face="Tahoma" size="2">
+        <span id="indicadorOnline" style="color: #00ff44;">&#9679; ONLINE</span>
+      </font>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="3" bgcolor="#000022">
+      <table border="0" cellpadding="1" cellspacing="3">
+        <tr>
+          <td>
+            <a href="/classico" target="_top">
+              <button style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 7px;" onmouseover="window.status='Inicio'; return true;" onmouseout="window.status=''; return true;">
+                &#9733; Inicio
+              </button>
+            </a>
+          </td>
+          <td>
+            <a href="/classico/files" target="conteudo">
+              <button style="border: 2px outset #8888ff; background-color: #000066; color: #ffffff; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 7px;" onmouseover="window.status='Ver arquivos'; return true;" onmouseout="window.status=''; return true;">
+                [&gt;&gt;] Arquivos
+              </button>
+            </a>
+          </td>
+          <td>
+            <a href="/classico/notas" target="conteudo">
+              <button style="border: 2px outset #8888ff; background-color: #000066; color: #ffffff; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 7px;" onmouseover="window.status='Bloco de notas'; return true;" onmouseout="window.status=''; return true;">
+                [&gt;&gt;] Notas
+              </button>
+            </a>
+          </td>
+          <td>
+            <a href="/moderno" target="_blank">
+              <button style="border: 2px outset #33aa33; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 7px;" onmouseover="window.status='Interface moderna (nova janela)'; return true;" onmouseout="window.status=''; return true;">
+                &#10024; Modo Moderno
+              </button>
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

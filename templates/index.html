@@ -1,300 +1,324 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>RetroLink - Servidor Híbrido - Modo Clássico</title>
-    <!-- CSS super leve (Web 1.0/2.0), pensado para não sobrecarregar MyPal/K-Meleon no XP -->
-    <style>
-        body {
-            font-family: Tahoma, Arial, sans-serif;
-            background-color: #004e98;
-            color: #000;
-            margin: 0;
-            padding: 20px;
-        }
+<title>RetroLink - Arquivos</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 6px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+<script type="text/javascript">
+<!--
+var blinkOn = true;
+function piscarMarcas() {
+    var els = document.getElementsByName("tag_new");
+    var i;
+    for (i = 0; i < els.length; i++) {
+        els[i].style.visibility = blinkOn ? "visible" : "hidden";
+    }
+    blinkOn = !blinkOn;
+}
+if (typeof setInterval != "undefined") {
+    setInterval(piscarMarcas, 700);
+}
 
-        .container {
-            background-color: #c0c0c0;
-            border: 2px outset #ffffff;
-            width: 800px;
-            margin: 0 auto;
-            padding: 15px;
-            box-shadow: 5px 5px 10px rgba(0,0,0,0.5);
+function iniciarUpload() {
+    if (typeof document.getElementById == "undefined") { return true; }
+    try {
+        var btn = document.getElementById("btn_enviar");
+        var st  = document.getElementById("upload_status");
+        if (st)  st.style.display = "block";
+        if (btn) {
+            setTimeout(function() {
+                try { btn.disabled = true; btn.value = "Enviando..."; } catch(e) {}
+            }, 50);
         }
+    } catch(e) {}
+    return true;
+}
 
-        .header {
-            background-color: #000080;
-            color: white;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 2px inset #ffffff;
-            text-align: center;
-        }
-
-        h1 { margin: 0; font-size: 24px; font-weight: bold; }
-        
-        .panel {
-            background-color: #e0e0e0;
-            border: 2px inset #ffffff;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .panel-title {
-            font-weight: bold;
-            color: #000080;
-            margin-top: 0;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #808080;
-            padding-bottom: 5px;
-        }
-
-        /* Tabela Estilo Windows Explorer Clássico */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            border: 1px solid #808080;
-            table-layout: fixed;
-        }
-
-        th {
-            background-color: #d4d0c8;
-            border: 1px outset #ffffff;
-            padding: 5px;
-            text-align: left;
-            font-weight: normal;
-        }
-
-        td {
-            padding: 5px;
-            border-bottom: 1px solid #e0e0e0;
-            vertical-align: top;
-        }
-
-        .name-cell {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .name-cell a,
-        .name-cell span {
-            display: block;
-            width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
-
-        tr:hover {
-            background-color: #316ac5;
-            color: white;
-        }
-        
-        tr:hover a { color: white; }
-
-        .icon-cell {
-            text-align: center;
-            width: 30px;
-            font-size: 18px;
-        }
-
-        .action-cell {
-            text-align: center;
-            width: 100px;
-        }
-
-        a { color: #0000ee; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-
-        .btn {
-            background-color: #d4d0c8;
-            border: 2px outset #ffffff;
-            padding: 5px 15px;
-            font-family: Tahoma, Arial, sans-serif;
-            font-size: 12px;
-            cursor: pointer;
-            color: black;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn:active {
-            border-style: inset;
-            background-color: #c0c0c0;
-        }
-
-        /* Formulário Clássico (multipart/form-data puro) */
-        form { margin: 0; }
-        
-        input[type="file"] {
-            background-color: white;
-            border: 1px solid #808080;
-            padding: 2px;
-            width: 70%;
-        }
-
-        .empty-msg {
-            text-align: center;
-            padding: 20px;
-            color: #808080;
-            font-style: italic;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 11px;
-            color: white;
-        }
-
-        /* Estilos para o iframe de upload */
-        #upload_frame {
-            display: none;
-            width: 100%;
-            height: 40px;
-            border: 1px solid #808080;
-            background-color: #fff;
-            margin-top: 10px;
-        }
-
-        #upload_status {
-            display: none;
-            color: #000080;
-            font-weight: bold;
-            margin-top: 10px;
-            padding: 5px;
-            background-color: #fffacd;
-            border: 1px solid #808080;
-            text-align: center;
-        }
-        
-        .path-breadcrumb {
-            font-size: 14px;
-            margin-bottom: 15px;
-            padding: 5px;
-            background-color: #fff;
-            border: 1px inset #fff;
-        }
-    </style>
-    <script>
-        function iniciarUpload() {
-            // Mostra a mensagem de "Enviando, aguarde..."
-            document.getElementById('upload_status').style.display = 'block';
-            // Garante que o iframe continue invisível para não quebrar o layout,
-            // mas pode ser mostrado para debug se necessário
-            return true;
-        }
-    </script>
+function uploadConcluido() {
+    if (typeof document.getElementById == "undefined") { return; }
+    try {
+        var btn = document.getElementById("btn_enviar");
+        var st  = document.getElementById("upload_status");
+        var ok  = document.getElementById("upload_ok");
+        if (st) st.style.display = "none";
+        if (ok) ok.style.display = "block";
+        if (btn) { btn.disabled = false; btn.value = "Enviar Arquivo"; }
+    } catch(e) {}
+}
+//-->
+</script>
 </head>
-<body>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
 
-    <div class="container">
-        
-        <div class="header">
-            <h1>💽 RetroLink - Central de Compartilhamento</h1>
-            <p style="margin:5px 0 0 0; font-size: 12px;">Conectado ao Windows 10 | Interface Otimizada para XP</p>
-            <div style="margin-top: 8px;">
-                <a href="/classico/notas" class="btn">📝 Bloco de Notas</a>
-            </div>
-        </div>
+<!-- Titulo da Pagina -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>&#9660; Arquivos Compartilhados &#9660;</b></font>
+      &nbsp;&nbsp;
+      <font face="Tahoma" size="2" color="#aaaaff">
+        Pasta atual: <b>/{{ current_path }}</b>
+      </font>
+    </td>
+  </tr>
+</table>
 
-        <!-- Painel de Upload (Enviar para o Win10) -->
-        <div class="panel">
-            <h2 class="panel-title">📤 Enviar Arquivo para o Servidor Moderno</h2>
-            <!-- O formulário aponta para o iframe oculto -->
+<br>
+
+<!-- Layout duas colunas: conteudo principal | noticias -->
+<table width="100%" border="0" cellpadding="0" cellspacing="6">
+  <tr>
+
+    <!-- COLUNA PRINCIPAL: upload, busca, listagem, paginacao -->
+    <td valign="top">
+
+      <!-- Painel de Upload -->
+      <table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td bgcolor="#000044">
+            <font face="Tahoma" size="2" color="#ffff00"><b>[UP] Enviar Arquivo para o Servidor</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#000033">
             <form action="/classico/upload?path={{ current_path }}" method="post" enctype="multipart/form-data" target="upload_frame" onsubmit="return iniciarUpload();">
-                <input type="file" name="file" required>
-                <button type="submit" class="btn">Enviar Arquivo</button>
+              <input type="file" name="file" style="font-family: Tahoma; font-size: 11px; width: 300px;">
+              &nbsp;
+              <input type="submit" id="btn_enviar" value="Enviar Arquivo" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 10px;">
             </form>
-            <div id="upload_status">⏳ Enviando arquivo, aguarde...</div>
-            <iframe id="upload_frame" name="upload_frame" src="about:blank"></iframe>
-        </div>
-
-        <!-- Painel de Download (Arquivos Disponíveis) -->
-        <div class="panel">
-            <h2 class="panel-title">📥 Arquivos Disponíveis (Baixar para o XP)</h2>
-            
-            <div class="path-breadcrumb">
-                <strong>📍 Local Atual:</strong> compartilhado/{{ current_path }}
+            <div id="upload_status" style="display: none; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px;">
+              <font color="#ffff00">&#9203; Enviando... aguarde.</font>
             </div>
+            <div id="upload_ok" style="display: none; color: #00ff44; font-family: Tahoma; font-size: 11px; padding: 3px;">
+              <font color="#00ff44"><b>[OK] Upload concluido!</b></font>
+            </div>
+            <iframe id="upload_frame" name="upload_frame" src="about:blank" onload="uploadConcluido();" style="display: none; width: 1px; height: 1px;" scrolling="no" frameborder="0"></iframe>
+          </td>
+        </tr>
+      </table>
 
-            <form method="get" action="/classico" style="margin: 0 0 10px 0; padding: 8px; background-color: #f5f5f5; border: 1px solid #b0b0b0;">
-                <input type="hidden" name="path" value="{{ current_path }}">
-                <input type="hidden" name="ordenar" value="{{ ordenar }}">
-                <input type="hidden" name="ordem" value="{{ ordem }}">
-                <label for="busca" style="font-weight: bold;">Busca por nome:</label>
-                <input type="text" id="busca" name="busca" value="{{ busca }}" style="width: 260px; border: 1px solid #808080; padding: 2px;">
-                <button type="submit" class="btn">Buscar</button>
-                <a href="{{ clear_search_url }}" class="btn">Limpar</a>
+      <br>
+
+      <!-- Formulario de Busca -->
+      <table width="100%" border="1" cellpadding="4" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td bgcolor="#000044">
+            <font face="Tahoma" size="2" color="#ffff00"><b>[?] Busca por Nome</b></font>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <form method="get" action="/classico/files">
+              <input type="hidden" name="path" value="{{ current_path }}">
+              <input type="hidden" name="ordenar" value="{{ ordenar }}">
+              <input type="hidden" name="ordem" value="{{ ordem }}">
+              <font face="Tahoma" size="2">
+                Nome:&nbsp;
+                <input type="text" name="busca" value="{{ busca }}" style="font-family: Tahoma; font-size: 11px; width: 200px; border: 1px inset #8888ff; background-color: #000033; color: #ffffff;">
+                &nbsp;
+                <input type="submit" value="Buscar" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; cursor: pointer; padding: 2px 8px;">
+                &nbsp;
+                <a href="{{ clear_search_url }}" style="border: 2px outset #666666; background-color: #222222; color: #aaaaaa; font-family: Tahoma; font-size: 11px; padding: 2px 8px; text-decoration: none;">[X] Limpar</a>
+              </font>
             </form>
-
             {% if busca %}
-            <div style="margin: 0 0 10px 0; padding: 6px; background-color: #fffacd; border: 1px solid #808080;">
-                Exibindo resultados para: <strong>{{ busca }}</strong>
-            </div>
+            <br>
+            <font face="Tahoma" size="2" color="#ffff00">Resultados para: <b>{{ busca }}</b></font>
             {% endif %}
-            
-            <table>
-                <colgroup>
-                    <col style="width: 30px;">
-                    <col>
-                    <col style="width: 120px;">
-                    <col style="width: 145px;">
-                    <col style="width: 100px;">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="icon-cell">Tipo</th>
-                        <th class="name-cell"><a href="{{ sort_nome_url }}">Nome {% if sort_symbols['nome'] %}{{ sort_symbols['nome'] }}{% endif %}</a></th>
-                        <th style="width: 120px;"><a href="{{ sort_tamanho_url }}">Tamanho {% if sort_symbols['tamanho'] %}{{ sort_symbols['tamanho'] }}{% endif %}</a></th>
-                        <th style="width: 145px;"><a href="{{ sort_data_url }}">Data {% if sort_symbols['data'] %}{{ sort_symbols['data'] }}{% endif %}</a></th>
-                        <th class="action-cell">Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if not files %}
-                    <tr>
-                        <td colspan="5" class="empty-msg">Nenhum arquivo ou pasta encontrado aqui.</td>
-                    </tr>
-                    {% else %}
-                        {% for f in files %}
-                        <tr>
-                            <td class="icon-cell">{{ f.icon }}</td>
-                            <td class="name-cell">
-                                {% if f.is_dir %}
-                                    <a href="{{ f.open_url }}" style="font-weight: bold;">{{ f.name }}</a>
-                                {% else %}
-                                    <a href="{{ f.details_url }}">{{ f.name }}</a>
-                                {% endif %}
-                            </td>
-                            <td>{{ f.size }}</td>
-                            <td>{{ f.modified }}</td>
-                            <td class="action-cell">
-                                {% if f.is_dir %}
-                                    <a href="{{ f.open_url }}" class="btn">Abrir 📂</a>
-                                {% else %}
-                                    <a href="{{ f.download_url }}" class="btn">⬇️ Baixar</a>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
+          </td>
+        </tr>
+      </table>
 
-        <div style="text-align: center; margin-top: 15px;">
-            <button onclick="window.location.reload();" class="btn">🔄 Atualizar Lista</button>
-            <a href="/" class="btn" style="margin-left: 10px;">🏠 Voltar ao Início</a>
-        </div>
+      <br>
 
-    </div>
+      <!-- Tabela de Arquivos -->
+      <table width="100%" border="1" cellpadding="4" cellspacing="0" bordercolor="#4444aa">
+        <tr>
+          <td bgcolor="#000044" width="30" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>Tipo</b></font>
+          </td>
+          <td bgcolor="#000044">
+            <a href="{{ sort_nome_url }}">
+              <font face="Tahoma" size="2" color="#ffff00"><b>Nome {% if sort_symbols['nome'] %}{{ sort_symbols['nome'] }}{% endif %}</b></font>
+            </a>
+          </td>
+          <td bgcolor="#000044" width="110" align="right">
+            <a href="{{ sort_tamanho_url }}">
+              <font face="Tahoma" size="2" color="#ffff00"><b>Tamanho {% if sort_symbols['tamanho'] %}{{ sort_symbols['tamanho'] }}{% endif %}</b></font>
+            </a>
+          </td>
+          <td bgcolor="#000044" width="130">
+            <a href="{{ sort_data_url }}">
+              <font face="Tahoma" size="2" color="#ffff00"><b>Modificado {% if sort_symbols['data'] %}{{ sort_symbols['data'] }}{% endif %}</b></font>
+            </a>
+          </td>
+          <td bgcolor="#000044" width="90" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>Acao</b></font>
+          </td>
+        </tr>
 
-    <div class="footer">
-        Desenvolvido para preservação retro. FastAPI + Jinja2 + HTML Clássico.
-    </div>
+        {% if not files %}
+        <tr>
+          <td colspan="5" align="center" bgcolor="#000033">
+            <font face="Verdana" size="2" color="#888888"><i>Nenhum arquivo ou pasta encontrado.</i></font>
+          </td>
+        </tr>
+        {% else %}
+        {% for f in files %}
+        <tr>
+          <td bgcolor="#000022" align="center">
+            <font face="Tahoma" size="2">
+              {% if f.is_dir %}[D]
+              {% else %}
+                {% set ext = f.name.rsplit('.', 1)[-1].lower() if '.' in f.name else '' %}
+                {% if ext in ['mp4','avi','mkv','mov','mpg','mpeg','wmv','webm','flv'] %}[V]
+                {% elif ext in ['mp3','wav','flac','ogg','m4a','aac','mid'] %}[A]
+                {% elif ext in ['jpg','jpeg','png','gif','bmp','webp','tif','tiff'] %}[I]
+                {% elif ext in ['zip','rar','7z','tar','gz'] %}[Z]
+                {% elif ext in ['iso','bin','img','mdf','cue'] %}[C]
+                {% elif ext in ['exe','msi','bat','cmd'] %}[E]
+                {% elif ext in ['doc','txt','pdf'] %}[T]
+                {% else %}[F]
+                {% endif %}
+              {% endif %}
+            </font>
+          </td>
+          <td bgcolor="#000022">
+            <font face="Tahoma" size="2">
+              {% if f.is_dir %}
+                <a href="{{ f.open_url }}"><b>{{ f.name }}</b></a>
+              {% else %}
+                <a href="{{ f.details_url }}">{{ f.name }}</a>
+                {% if f.is_new %}
+                  &nbsp;<font color="#ff4444" name="tag_new"><b>[NEW]</b></font>
+                {% endif %}
+                {% if f.is_hot %}
+                  &nbsp;<font color="#ff8800"><b>[HOT]</b></font>
+                {% endif %}
+              {% endif %}
+            </font>
+          </td>
+          <td bgcolor="#000022" align="right">
+            <font face="Tahoma" size="2" color="#cccccc">{{ f.size }}</font>
+          </td>
+          <td bgcolor="#000022">
+            <font face="Tahoma" size="2" color="#aaaaaa">{{ f.modified }}</font>
+          </td>
+          <td bgcolor="#000022" align="center">
+            {% if f.is_dir %}
+              <a href="{{ f.open_url }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 2px 6px; text-decoration: none;">[+] Abrir</a>
+            {% else %}
+              <a href="{{ f.download_url }}" style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 11px; padding: 2px 6px; text-decoration: none;">[v] Baixar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+      </table>
+
+      <!-- Paginacao -->
+      {% if total_paginas > 1 %}
+      <br>
+      <table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td align="center">
+            {% if pag_anterior_url %}
+              <a href="{{ pag_anterior_url }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">&lt;&lt; Anterior</a>
+            {% else %}
+              <font face="Tahoma" size="2" color="#555555">&lt;&lt; Anterior</font>
+            {% endif %}
+            &nbsp;&nbsp;
+            <font face="Tahoma" size="2" color="#ffffff">Pagina <b>{{ pagina }}</b> de <b>{{ total_paginas }}</b> ({{ total_items }} itens)</font>
+            &nbsp;&nbsp;
+            {% if pag_proxima_url %}
+              <a href="{{ pag_proxima_url }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">Proxima &gt;&gt;</a>
+            {% else %}
+              <font face="Tahoma" size="2" color="#555555">Proxima &gt;&gt;</font>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+      {% endif %}
+
+      <br>
+
+      <!-- Botoes de Acao -->
+      <table border="0" cellpadding="0" cellspacing="4">
+        <tr>
+          <td>
+            <a href="/classico/files?path={{ current_path }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffffff; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[~] Atualizar</a>
+          </td>
+          <td>
+            <a href="/classico" target="_top" style="border: 2px outset #666666; background-color: #222222; color: #aaaaaa; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[^] Inicio</a>
+          </td>
+        </tr>
+      </table>
+
+    </td><!-- fim coluna principal -->
+
+    <!-- COLUNA DE NOTICIAS: 280px fixa -->
+    <td width="280" valign="top">
+      {% if noticias %}
+      <table width="280" border="2" cellpadding="0" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+        <tr>
+          <td bgcolor="#000044" align="center">
+            <font face="Tahoma" size="2" color="#ffff00"><b>&#9660; NOTICIAS &#9660;</b></font><br>
+            <font face="Tahoma" size="1" color="#aaaaff">GameWorld BR</font>
+          </td>
+        </tr>
+        {% for n in noticias %}
+        <tr>
+          <td bgcolor="{% if loop.index0 % 2 == 0 %}#000033{% else %}#000022{% endif %}" style="padding: 5px;">
+            {% if loop.first and n.tipo == 'games' %}
+              <font face="Tahoma" size="1" color="#ff4444" name="tag_new"><b>[NEW]</b></font>&nbsp;
+            {% endif %}
+            {% if n.tipo == 'musa' %}
+              <font face="Tahoma" size="1" color="#ff8800"><b>[HOT]</b></font><br>
+              <font face="Tahoma" size="2" color="#ff88aa"><b>{{ n.titulo }}</b></font>
+            {% else %}
+              <font face="Tahoma" size="2" color="#ffff00"><b>{{ n.titulo }}</b></font>
+            {% endif %}
+            <br>
+            <font face="Tahoma" size="1" color="#888888">{{ n.fonte }} &mdash; {{ n.data }}</font>
+            <br>
+            <font face="Verdana" size="1" color="#cccccc">{{ n.corpo }}</font>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td bgcolor="#000011" align="center">
+            <font face="Verdana" size="1" color="#444466">
+              <a href="/classico/regenerar-conteudo" style="color: #333355;">[atualizar]</a>
+            </font>
+          </td>
+        </tr>
+      </table>
+      {% endif %}
+    </td><!-- fim coluna noticias -->
+
+  </tr>
+</table>
+
+<br>
+
+<!-- Rodape -->
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Visitas: <b><font color="#00ff44">{{ visit_count }}</font></b>
+        &nbsp;|&nbsp; Melhor visualizado em 800x600
+        &nbsp;|&nbsp; Internet Explorer 5+ / K-Meleon
+        &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>

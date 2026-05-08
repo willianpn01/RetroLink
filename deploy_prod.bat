@@ -70,6 +70,16 @@ if errorlevel 1 (
 
 echo [5/5] Iniciando servidor RetroLink...
 set "RETROLINK_SHARED_DIR=%SHARED_DIR%"
+
+REM --- Variaveis de ambiente opcionais (descomente para alterar) ---
+REM RETROLINK_MAX_WORKERS: numero maximo de threads para backup e conversao.
+REM   Padrao: 2. Em maquinas modestas, mantenha em 1 ou 2.
+REM set "RETROLINK_MAX_WORKERS=2"
+REM
+REM RETROLINK_PAGE_SIZE: itens por pagina no listador classico.
+REM   Padrao: 50. Reduza se o K-Meleon travar com muitos arquivos.
+REM set "RETROLINK_PAGE_SIZE=50"
+
 echo.
 echo RETROLINK_SHARED_DIR=%RETROLINK_SHARED_DIR%
 echo Servidor em: http://0.0.0.0:%PORT%

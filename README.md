@@ -93,6 +93,13 @@ Se não definir, o fallback será `./compartilhado`.
 $env:RETROLINK_SHARED_DIR = "D:\RetroLinkCompartilhado"
 ```
 
+Outras variáveis opcionais:
+
+```powershell
+$env:RETROLINK_MAX_WORKERS = "2"   # threads para backup/conversão (padrão: 2)
+$env:RETROLINK_PAGE_SIZE = "50"    # itens por página no clássico (padrão: 50)
+```
+
 ### 5) Executar servidor
 
 ```bash
@@ -137,9 +144,13 @@ RetroLink/
 ├─ deploy_prod.bat
 ├─ bibliotecas.json
 ├─ compartilhado/
+│  ├─ backups/
 │  └─ .cache/
 │     ├─ thumbnails/
-│     └─ versoes/
+│     ├─ versoes/
+│     ├─ backup_config.json
+│     ├─ duplicatas_cache.json
+│     └─ notas.txt
 └─ templates/
    ├─ index.html
    ├─ moderno.html
@@ -179,6 +190,10 @@ Exemplo:
 
 ## 🔌 APIs principais
 
+## Rota raiz
+
+- `GET /` — Página de seleção de modo (clássico ou moderno)
+
 ## Bibliotecas
 
 - `GET /api/bibliotecas`
@@ -189,20 +204,58 @@ Exemplo:
 
 ## Arquivos e mídia
 
-- `GET /api/files`
-- `GET /api/thumbnail`
-- `GET /api/exif`
-- `GET /api/video-info`
-- `GET /api/stream`
-- `GET /api/audio-stream`
+- `GET /api/files` — Listagem de arquivos/diretórios
+- `GET /api/thumbnail` — Thumbnail de imagem ou vídeo
+- `GET /api/exif` — Metadados EXIF
+- `GET /api/video-info` — Informações de vídeo (ffprobe)
+- `GET /api/stream` — Streaming de vídeo (Range + transcode)
+- `GET /api/audio-stream` — Streaming de áudio
+
+## Organização de fotos
+
+- `POST /api/organizar-fotos/preview` — Preview do plano de organização
+- `POST /api/organizar-fotos` — Executa organização em background
+- `GET /api/organizar-fotos/status` — Status/progresso
+
+## Duplicatas
+
+- `GET /api/duplicatas` — Relatório (MD5 + pHash, com cache persistente)
+- `DELETE /api/duplicatas` — Exclusão seletiva
+- `POST /api/duplicatas/cache/limpar` — Invalidar cache de hashes
+
+## Conversão de mídia
+
+- `POST /api/converter` — Inicia conversão
+- `GET /api/converter/status/{job_id}` — Status/progresso
+- `POST /api/converter/cancel/{job_id}` — Cancela conversão
+
+## Backup
+
+- `GET /api/backup/config` — Configuração de pastas
+- `POST /api/backup/config` — Salvar configuração
+- `DELETE /api/backup/config/{index}` — Remover entrada
+- `POST /api/backup/executar` — Executar backup
+- `GET /api/backup/status/{job_id}` — Status/progresso
+
+## Versões
+
+- `GET /api/versoes` — Listar versões de um arquivo
+- `POST /api/versoes/restaurar` — Restaurar versão
+- `GET /api/versoes/cache/stats` — Estatísticas do cache
+- `POST /api/versoes/cache/limpar` — Limpeza do cache
 
 ## Clássico
 
-- `GET /classico`
-- `GET /classico/download/{path:path}`
-- `POST /classico/upload`
-- `GET /classico/detalhes`
-- `GET/POST /classico/notas`
+- `GET /classico` — Interface clássica (paginada, `?pagina=N`)
+- `GET /classico/download/{path:path}` — Download de arquivo
+- `POST /classico/upload` — Upload de arquivo
+- `GET /classico/detalhes` — Detalhes do arquivo
+- `GET /classico/notas` — Bloco de notas (leitura)
+- `POST /classico/notas` — Bloco de notas (salvamento)
+
+## Moderno
+
+- `GET /moderno` — SPA React
 
 ---
 
@@ -235,7 +288,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8010
 ## 📝 Observações do repositório
 
 - `DOCUMENTACAO_TECNICA.md` está ignorado pelo `.gitignore` (uso interno)
-- `.venv/`, `__pycache__/` e `compartilhado/` também estão ignorados
+- `.venv/`, `__pycache__/`, `bibliotecas.json` e `compartilhado/` também estão ignorados
 
 ---
 

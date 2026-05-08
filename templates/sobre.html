@@ -1,0 +1,149 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink - Sobre</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 6px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+</head>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
+
+<!-- Cabecalho -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>[ Sobre este Site ]</b></font>
+    </td>
+  </tr>
+</table>
+
+<hr color="#4444ff" size="1">
+
+{% if editar %}
+<!-- ===== MODO EDICAO ===== -->
+<table width="100%" border="1" cellpadding="6" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>[E] Editar Conteudo</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <form action="/classico/sobre" method="post">
+        <textarea name="conteudo" rows="14" cols="70"
+          style="font-family: Courier New, Courier; font-size: 12px; width: 100%; background-color: #000022; color: #ffffff; border: 1px inset #4444aa; padding: 4px;">{{ conteudo }}</textarea>
+        <br><br>
+        <input type="submit" value="[ Salvar ]"
+          style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 12px; cursor: pointer; padding: 4px 14px;">
+        &nbsp;
+        <a href="/classico/sobre"
+          style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 12px; padding: 4px 14px; text-decoration: none;">[ Cancelar ]</a>
+      </form>
+    </td>
+  </tr>
+</table>
+
+{% else %}
+<!-- ===== MODO VISUALIZACAO ===== -->
+
+<!-- Conteudo do sobre.txt -->
+<table width="100%" border="1" cellpadding="8" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td>
+      <pre style="font-family: Tahoma, Arial; font-size: 12px; color: #dddddd; white-space: pre-wrap; margin: 0;">{{ conteudo }}</pre>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Tabela de Specs do Servidor -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td colspan="2" bgcolor="#000044" align="center">
+      <font face="Tahoma" size="2" color="#ffff00"><b>[ Especificacoes do Servidor ]</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044" width="200">
+      <font face="Tahoma" size="2" color="#aaaaff">Versao Python:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#00ff44">{{ python_version }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#aaaaff">Sistema Operacional:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#00ff44">{{ os_info }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#aaaaff">Disco Usado:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#ffff00">{{ disk_usado }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#aaaaff">Disco Livre:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#00ff44">{{ disk_livre }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#aaaaff">Disco Total:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#aaaaaa">{{ disk_total }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#aaaaff">Framework:</font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#aaaaaa">FastAPI + Jinja2 + Uvicorn</font>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Botao Editar -->
+<table border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <a href="/classico/sobre?editar=1"
+        style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 12px; padding: 4px 14px; text-decoration: none;">[ Editar Esta Pagina ]</a>
+    </td>
+  </tr>
+</table>
+
+{% endif %}
+
+<br>
+
+<!-- Rodape -->
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Melhor visualizado em 800x600 &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

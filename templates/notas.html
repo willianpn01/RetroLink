@@ -1,112 +1,70 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>RetroLink - Bloco de Notas Compartilhado</title>
-    <style>
-        body {
-            font-family: Tahoma, Arial, sans-serif;
-            background-color: #004e98;
-            color: #000;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            background-color: #c0c0c0;
-            border: 2px outset #ffffff;
-            width: 860px;
-            margin: 0 auto;
-            padding: 15px;
-        }
-
-        .header {
-            background-color: #000080;
-            color: #fff;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 2px inset #ffffff;
-            text-align: center;
-        }
-
-        .panel {
-            background-color: #e0e0e0;
-            border: 2px inset #ffffff;
-            padding: 12px;
-        }
-
-        .btn {
-            background-color: #d4d0c8;
-            border: 2px outset #ffffff;
-            padding: 6px 14px;
-            font-family: Tahoma, Arial, sans-serif;
-            font-size: 12px;
-            cursor: pointer;
-            color: #000;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn:active {
-            border-style: inset;
-            background-color: #c0c0c0;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 380px;
-            border: 1px solid #808080;
-            font-family: "Courier New", monospace;
-            font-size: 13px;
-            line-height: 1.4;
-            padding: 8px;
-            box-sizing: border-box;
-            white-space: pre;
-            overflow: auto;
-            background-color: #fff;
-            color: #000;
-        }
-
-        .success {
-            margin: 0 0 10px 0;
-            padding: 8px;
-            border: 1px solid #2b8c2b;
-            background-color: #dff5df;
-            color: #0b5f0b;
-            font-weight: bold;
-        }
-
-        .muted {
-            margin-top: 8px;
-            font-size: 11px;
-            color: #404040;
-        }
-    </style>
+<title>RetroLink - Bloco de Notas</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 8px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1 style="margin: 0;">📝 Bloco de Notas Compartilhado</h1>
-        </div>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
 
-        <div style="margin-bottom: 10px;">
-            <a href="/classico" class="btn">← Voltar para arquivos</a>
-        </div>
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>&#9660; Bloco de Notas Compartilhado &#9660;</b></font>
+    </td>
+  </tr>
+</table>
 
-        <div class="panel">
-            {% if salvo %}
-            <div class="success">✅ Notas salvas com sucesso!</div>
-            {% endif %}
+<br>
 
-            <form method="post" action="/classico/notas" enctype="multipart/form-data">
-                <textarea name="conteudo" rows="20">{{ conteudo }}</textarea>
-                <div style="margin-top: 10px;">
-                    <button type="submit" class="btn">💾 Salvar</button>
-                </div>
-            </form>
+{% if salvo %}
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#336633" bgcolor="#003300">
+  <tr>
+    <td align="center">
+      <font face="Tahoma" size="2" color="#00ff44"><b>[OK] Notas salvas com sucesso!</b></font>
+    </td>
+  </tr>
+</table>
+<br>
+{% endif %}
 
-            <div class="muted">Última modificação: {{ ultima_modificacao }}</div>
-        </div>
-    </div>
+<table width="100%" border="1" cellpadding="4" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Ultima modificacao:</b></font>
+      <font face="Tahoma" size="2" color="#aaaaff">{{ ultima_modificacao }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <form action="/classico/notas" method="post">
+        <textarea name="conteudo" rows="18" cols="72" style="font-family: Courier New, Courier; font-size: 12px; width: 100%; background-color: #000022; color: #ffffff; border: 1px inset #4444aa; padding: 4px;">{{ conteudo }}</textarea>
+        <br>
+        <br>
+        <input type="submit" value="[S] Salvar Notas" style="border: 2px outset #336633; background-color: #003300; color: #00ff44; font-family: Tahoma; font-size: 12px; cursor: pointer; padding: 4px 14px;">
+        &nbsp;
+        <a href="/classico/files" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 12px; padding: 4px 14px; text-decoration: none;">[&lt;] Voltar</a>
+      </form>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Melhor visualizado em 800x600 &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
+
 </body>
 </html>

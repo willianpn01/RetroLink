@@ -3,3 +3,4 @@ DOCUMENTACAO_TECNICA.md
 __pycache__/
 *.pyc
 compartilhado/
+bibliotecas.json

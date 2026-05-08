@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink - Galeria de Fotos</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 6px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+<script type="text/javascript">
+<!--
+function abrirFoto(url) {
+    window.open(url, "viewer", "width=660,height=540,toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=no,status=no");
+    return false;
+}
+//-->
+</script>
+</head>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
+
+<!-- Cabecalho -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>&#9660; Galeria de Fotos &#9660;</b></font>
+      &nbsp;&nbsp;
+      <font face="Tahoma" size="2" color="#aaaaff">
+        Pasta: <b>/{{ pasta if pasta else "raiz" }}</b>
+        &nbsp;|&nbsp;
+        {{ total_images }} imagem(ns)
+      </font>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Navegacao de Pasta -->
+<table border="0" cellpadding="0" cellspacing="4">
+  <tr>
+    {% if has_parent %}
+    <td>
+      <a href="{{ parent_url }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[^] Pasta Acima</a>
+    </td>
+    {% endif %}
+    <td>
+      <a href="/classico/galeria" style="border: 2px outset #666666; background-color: #222222; color: #aaaaaa; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[~] Raiz da Galeria</a>
+    </td>
+    <td>
+      <a href="/classico/files" target="_parent" style="border: 2px outset #666666; background-color: #222222; color: #aaaaaa; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[F] Ver Arquivos</a>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Subpastas -->
+{% if subdirs %}
+<table width="100%" border="1" cellpadding="4" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>[DIR] Subpastas</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <table border="0" cellpadding="4" cellspacing="4">
+        <tr>
+          {% for sd in subdirs %}
+          <td bgcolor="#000022" align="center">
+            <a href="{{ sd.url }}">
+              <font face="Tahoma" size="2" color="#aaaaff">[DIR]<br><b>{{ sd.name }}</b></font>
+            </a>
+          </td>
+          {% endfor %}
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<br>
+{% endif %}
+
+<!-- Grade de Thumbnails (4 colunas) -->
+{% if images %}
+<table width="100%" border="1" cellpadding="8" cellspacing="0" bordercolor="#4444aa" bgcolor="#000022">
+  <tbody>
+    {% for img in images %}
+    {% if loop.index0 % 4 == 0 %}<tr>{% endif %}
+    <td bgcolor="#000033" align="center" width="25%">
+      <a href="{{ img.viewer_url }}" onclick="return abrirFoto(this.href);">
+        <img src="{{ img.thumbnail_url }}" width="120" height="120" border="3" alt="{{ img.name }}" style="border-color: #ffffff; border-style: solid;">
+      </a>
+      <br>
+      <font face="Tahoma" size="1" color="#dddddd">
+        {% if img.name|length > 15 %}{{ img.name[:15] }}...{% else %}{{ img.name }}{% endif %}
+      </font>
+      <br>
+      <font face="Tahoma" size="1" color="#777799">{{ img.modified }}</font>
+    </td>
+    {% if loop.index % 4 == 0 or loop.last %}
+      {% if loop.last and loop.index % 4 != 0 %}
+        {% for i in range(4 - loop.index % 4) %}
+        <td bgcolor="#000022">&nbsp;</td>
+        {% endfor %}
+      {% endif %}
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<table width="100%" border="1" cellpadding="10" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="2" color="#888888"><i>Nenhuma imagem encontrada nesta pasta.</i></font>
+    </td>
+  </tr>
+</table>
+{% endif %}
+
+<!-- Paginacao -->
+{% if total_paginas > 1 %}
+<br>
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa" bgcolor="#000033">
+  <tr>
+    <td align="center">
+      {% if pag_ant %}
+        <a href="{{ pag_ant }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">[&lt;&lt;] Anterior</a>
+      {% else %}
+        <font face="Tahoma" size="2" color="#444466">[&lt;&lt;] Anterior</font>
+      {% endif %}
+      &nbsp;&nbsp;
+      <font face="Tahoma" size="2" color="#ffffff">
+        Foto <b>{{ start_idx }}</b> a <b>{{ end_idx }}</b> de <b>{{ total_images }}</b> imagens
+        &nbsp;(Pag. {{ pagina }}/{{ total_paginas }})
+      </font>
+      &nbsp;&nbsp;
+      {% if pag_prox %}
+        <a href="{{ pag_prox }}" style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 11px; padding: 3px 9px; text-decoration: none;">Proxima [&gt;&gt;]</a>
+      {% else %}
+        <font face="Tahoma" size="2" color="#444466">Proxima [&gt;&gt;]</font>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+{% endif %}
+
+<br>
+
+<!-- Rodape -->
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Melhor visualizado em 800x600 &nbsp;|&nbsp; Internet Explorer 5+ / K-Meleon &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>RetroLink - Status do Servidor</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+body { background-color: #000080; color: #ffffff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; margin: 0; padding: 6px; }
+a { color: #ffff00; text-decoration: none; }
+a:hover { color: #ffffff; text-decoration: underline; }
+</style>
+</head>
+<body bgcolor="#000080" text="#ffffff" link="#ffff00" vlink="#aaaaff">
+
+<!-- Cabecalho -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" align="center">
+      <font face="Tahoma" size="4" color="#ffff00"><b>[ Central de Controle -- RetroLink ]</b></font>
+    </td>
+  </tr>
+</table>
+
+<hr color="#4444ff" size="1">
+
+<!-- Barra de Uso de Disco -->
+<table width="100%" border="0" cellpadding="2" cellspacing="0">
+  <tr>
+    <td>
+      <font face="Tahoma" size="2" color="#ffff00"><b>Uso do Disco:</b></font>
+      &nbsp;
+      <font face="Tahoma" size="2" color="#aaaaff">{{ disk_usado }} usado de {{ disk_total }} ({{ disk_pct }}% -- {{ disk_livre }} livre)</font>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <table width="100%" border="1" cellpadding="0" cellspacing="0" bordercolor="#333366" height="16">
+        <tr>
+          {% if disk_pct > 0 %}
+          <td bgcolor="{{ disk_bar_color }}" width="{{ disk_pct }}%" height="16">
+            <font face="Tahoma" size="1" color="#ffffff">&nbsp;{{ disk_pct }}%</font>
+          </td>
+          {% endif %}
+          {% set disk_livre_pct = 100 - disk_pct %}
+          {% if disk_livre_pct > 0 %}
+          <td bgcolor="#003300" width="{{ disk_livre_pct }}%" height="16">&nbsp;</td>
+          {% endif %}
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<hr color="#4444ff" size="1">
+
+<!-- Tabela de Metricas -->
+<table width="100%" border="1" cellpadding="5" cellspacing="0" bordercolor="#4444aa">
+  <tr>
+    <td bgcolor="#000044" width="50%">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Total de Arquivos:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Courier New" size="2" color="#00ff44"><b>{{ total_files }}</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Total de Imagens:</b></font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#aaffaa">{{ total_images }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Total de Musicas:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Courier New" size="2" color="#aaffaa">{{ total_musicas }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Cache de Thumbnails:</b></font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#aaaaaa">{{ thumb_cache }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Ultimo Backup:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      <font face="Courier New" size="2" color="#aaaaff">{{ ultimo_backup }}</font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000033">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Visitas ao Site:</b></font>
+    </td>
+    <td bgcolor="#000022">
+      <font face="Courier New" size="2" color="#00ff44"><b>{{ visit_count }}</b></font>
+    </td>
+  </tr>
+  <tr>
+    <td bgcolor="#000044">
+      <font face="Tahoma" size="2" color="#ffff00"><b>Jobs em Andamento:</b></font>
+    </td>
+    <td bgcolor="#000033">
+      {% if jobs_ativos > 0 %}
+        <blink><font face="Tahoma" size="2" color="#ffff00"><b>[PROCESSANDO...] ({{ jobs_ativos }} job(s))</b></font></blink>
+      {% else %}
+        <font face="Tahoma" size="2" color="#00ff44"><b>[OCIOSO]</b></font>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Botao Atualizar -->
+<table border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <a href="/classico/status"
+        style="border: 2px outset #8888ff; background-color: #000066; color: #ffff00; font-family: Tahoma; font-size: 12px; padding: 4px 14px; text-decoration: none;">[~] Atualizar</a>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<!-- Rodape -->
+<table width="100%" border="1" cellpadding="3" cellspacing="0" bordercolor="#333366" bgcolor="#000011">
+  <tr>
+    <td align="center">
+      <font face="Verdana" size="1" color="#555577">
+        Ultima atualizacao: <b>{{ hora_atual }}</b>
+        &nbsp;|&nbsp; Melhor visualizado em 800x600 &nbsp;|&nbsp; RetroLink v1.0
+      </font>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
